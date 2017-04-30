@@ -16,8 +16,12 @@ import (
 
 // NewRouter returns a new router instance.
 func NewRouter() *Router {
+    fmt.Println("vendor/github.com/gorilla/mux/mux.go   NewRouter()")
 	return &Router{namedRoutes: make(map[string]*Route), KeepContext: false}
 }
+
+
+
 
 // Router registers routes to be matched and dispatches a handler.
 //

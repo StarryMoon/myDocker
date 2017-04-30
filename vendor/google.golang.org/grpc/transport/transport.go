@@ -236,15 +236,41 @@ func (s *Stream) GoAway() <-chan struct{} {
 // is available. It blocks until i) the metadata is ready or ii) there is no
 // header metadata or iii) the stream is cancelled/expired.
 func (s *Stream) Header() (metadata.MD, error) {
+    if s.StatusCode() != 0 {
+         fmt.Println("vendor/google/grpc/transport/transport.go  Header() begin StatusCode : ", s.StatusCode())
+         fmt.Println("vendor/google/grpc/transport/transport.go  Header() begin StatusDesc : ", s.StatusDesc())
+    }
 	select {
 	case <-s.ctx.Done():
+    if s.StatusCode() != 0 {
+         fmt.Println("vendor/google/grpc/transport/transport.go  Header() done StatusCode : ", s.StatusCode())
+         fmt.Println("vendor/google/grpc/transport/transport.go  Header() done StatusDesc : ", s.StatusDesc())
+    }
 		return nil, ContextErr(s.ctx.Err())
 	case <-s.goAway:
+    if s.StatusCode() != 0 {
+         fmt.Println("vendor/google/grpc/transport/transport.go  Header() away StatusCode : ", s.StatusCode())
+         fmt.Println("vendor/google/grpc/transport/transport.go  Header() away StatusDesc : ", s.StatusDesc())
+    }
 		return nil, ErrStreamDrain
 	case <-s.headerChan:
+    if s.StatusCode() != 0 {
+         fmt.Println("vendor/google/grpc/transport/transport.go  Header() chan StatusCode : ", s.StatusCode())
+         fmt.Println("vendor/google/grpc/transport/transport.go  Header() chan StatusDesc : ", s.StatusDesc())
+    }
+
 		return s.header.Copy(), nil
 	}
 }
+
+/*
+func (s *Stream) SetStatus()  {
+	s.statusCode = 0
+	s.statusDesc = ""
+
+}
+*/
+
 
 // Trailer returns the cached trailer metedata. Note that if it is not called
 // after the entire stream is done, it could return an empty MD. Client

@@ -203,6 +203,7 @@ func (ls *layerStore) loadMount(mount string) error {
 }
 
 func (ls *layerStore) applyTar(tx MetadataTransaction, ts io.Reader, parent string, layer *roLayer) error {
+    fmt.Println("layer/layer_store.go  applyTar()")
 	digester := digest.Canonical.New()
 	tr := io.TeeReader(ts, digester.Hash())
 
@@ -210,6 +211,7 @@ func (ls *layerStore) applyTar(tx MetadataTransaction, ts io.Reader, parent stri
 	if err != nil {
 		return err
 	}
+    fmt.Println("layer/layer_store.go  applyTar() after TarSplitWriter()")
 	metaPacker := storage.NewJSONPacker(tsw)
 	defer tsw.Close()
 
@@ -220,10 +222,12 @@ func (ls *layerStore) applyTar(tx MetadataTransaction, ts io.Reader, parent stri
 		return err
 	}
 
+    fmt.Println("layer/layer_store.go  applyTar() before ApplyDiff()")
 	applySize, err := ls.driver.ApplyDiff(layer.cacheID, parent, rdr)
 	if err != nil {
 		return err
 	}
+    fmt.Println("layer/layer_store.go  applyTar() after ApplyDiff()")
 
 	// Discard trailing data but ensure metadata is picked up to reconstruct stream
 	io.Copy(ioutil.Discard, rdr) // ignore error as reader may be closed
@@ -237,6 +241,7 @@ func (ls *layerStore) applyTar(tx MetadataTransaction, ts io.Reader, parent stri
 }
 
 func (ls *layerStore) Register(ts io.Reader, parent ChainID) (Layer, error) {
+    fmt.Println("layer/layer_store.go  Register()")
 	return ls.registerWithDescriptor(ts, parent, distribution.Descriptor{})
 }
 
@@ -244,6 +249,7 @@ func (ls *layerStore) registerWithDescriptor(ts io.Reader, parent ChainID, descr
 	// err is used to hold the error which will always trigger
 	// cleanup of creates sources but may not be an error returned
 	// to the caller (already exists).
+    fmt.Println("layer/layer_store.go  registerWithDescriptor()")
 	var err error
 	var pid string
 	var p *roLayer
@@ -266,6 +272,7 @@ func (ls *layerStore) registerWithDescriptor(ts io.Reader, parent ChainID, descr
 			return nil, err
 		}
 	}
+    fmt.Println("layer/layer_store.go  after stringparent")
 
 	// Create new roLayer
 	layer := &roLayer{
@@ -277,10 +284,12 @@ func (ls *layerStore) registerWithDescriptor(ts io.Reader, parent ChainID, descr
 		descriptor:     descriptor,
 	}
 
+    fmt.Println("layer/layer_store.go  before drivercreate()")
 	if err = ls.driver.Create(layer.cacheID, pid, nil); err != nil {
 		return nil, err
 	}
 
+    fmt.Println("layer/layer_store.go  before starttransaction()")
 	tx, err := ls.store.StartTransaction()
 	if err != nil {
 		return nil, err
@@ -298,9 +307,11 @@ func (ls *layerStore) registerWithDescriptor(ts io.Reader, parent ChainID, descr
 		}
 	}()
 
+    fmt.Println("layer/layer_store.go  before applyTar()")
 	if err = ls.applyTar(tx, ts, pid, layer); err != nil {
 		return nil, err
 	}
+    fmt.Println("layer/layer_store.go  after applyTar()")
 
 	if layer.parent == nil {
 		layer.chainID = ChainID(layer.diffID)
@@ -326,6 +337,8 @@ func (ls *layerStore) registerWithDescriptor(ts io.Reader, parent ChainID, descr
 	}
 
 	ls.layerMap[layer.chainID] = layer
+    
+    fmt.Println("layer/layer_store.go  registerWithDescriptor() end")
 
 	return layer.getReference(), nil
 }

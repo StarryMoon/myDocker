@@ -8,6 +8,18 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	
+    //"github.com/Sirupsen/logrus"
+    //"github.com/docker/docker/cli"
+    //  "github.com/docker/docker/api/types/versions"
+	//"github.com/docker/docker/cli/command/commands"
+	//  cliflags "github.com/docker/docker/cli/flags"
+	//"github.com/docker/docker/cliconfig"
+	//"github.com/docker/docker/dockerversion"
+    //	"github.com/docker/docker/pkg/term"
+	//"github.com/docker/docker/utils"
+	//"github.com/spf13/pflag"
+
 
 	"github.com/docker/docker/api"
 	"github.com/docker/docker/api/types"
@@ -43,7 +55,29 @@ type DockerCli struct {
 	client          client.APIClient
 	hasExperimental bool
 	defaultVersion  string
+//added characters
+    container       string
+    execConfig      *types.ExecConfig
 }
+
+func (cli *DockerCli) SetCliclient(c client.APIClient) error {
+    cli.client = c
+    return nil
+}
+
+func (cli *DockerCli) GetClicontainer() string {
+    return cli.container
+}
+
+func (cli *DockerCli) GetCliexecconfig() *types.ExecConfig {
+    return cli.execConfig
+}
+
+func NewFirstDockerCli(in io.ReadCloser, out, err io.Writer, c string, ec *types.ExecConfig) *DockerCli {
+     fmt.Println("cli/command/cli.go  NewDockerCli()")
+     return &DockerCli{in: NewInStream(in), out: NewOutStream(out), err: err, container: c, execConfig: ec,}
+}
+
 
 // HasExperimental returns true if experimental features are accessible.
 func (cli *DockerCli) HasExperimental() bool {
@@ -173,6 +207,7 @@ func (cli *DockerCli) Initialize(opts *cliflags.ClientOptions) error {
 
 // NewDockerCli returns a DockerCli instance with IO output and error streams set by in, out and err.
 func NewDockerCli(in io.ReadCloser, out, err io.Writer) *DockerCli {
+    fmt.Println("cli/command/cli.go  NewDockerCli()")
 	return &DockerCli{in: NewInStream(in), out: NewOutStream(out), err: err}
 }
 
@@ -258,3 +293,150 @@ func newHTTPClient(host string, tlsOptions *tlsconfig.Options) (*http.Client, er
 func UserAgent() string {
 	return "Docker-Client/" + dockerversion.Version + " (" + runtime.GOOS + ")"
 }
+
+
+
+
+
+
+
+/*
+func newFirstDockerCommand(dockerCli *command.DockerCli) *cobra.Command {
+    fmt.Println("cli/command/container/exec.go  newFirstDockerCommand()")
+	opts := cliflags.NewClientOptions()
+	var flags *pflag.FlagSet
+
+	cmd := &cobra.Command{
+		Use:              "docker [OPTIONS] COMMAND [ARG...]",
+		Short:            "A self-sufficient runtime for containers",
+		SilenceUsage:     true,
+		SilenceErrors:    true,
+		TraverseChildren: true,
+		Args:             noArgs,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if opts.Version {
+				showVersion()
+				return nil
+			}
+			return dockerCli.ShowHelp(cmd, args)
+		},
+		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+			// daemon command is special, we redirect directly to another binary
+			if cmd.Name() == "daemon" {
+				return nil
+			}
+			// flags must be the top-level command flags, not cmd.Flags()
+			opts.Common.SetDefaultOptions(flags)
+			dockerPreRun(opts)
+			if err := dockerCli.Initialize(opts); err != nil {
+				return err
+			}
+			return isSupported(cmd, dockerCli.Client().ClientVersion(), dockerCli.HasExperimental())
+		},
+	}
+	cli.SetupRootCommand(cmd)
+
+	cmd.SetHelpFunc(func(ccmd *cobra.Command, args []string) {
+		if dockerCli.Client() == nil { // when using --help, PersistenPreRun is not called, so initialization is needed.
+			// flags must be the top-level command flags, not cmd.Flags()
+			opts.Common.SetDefaultOptions(flags)
+			dockerPreRun(opts)
+			dockerCli.Initialize(opts)
+		}
+
+		if err := isSupported(ccmd, dockerCli.Client().ClientVersion(), dockerCli.HasExperimental()); err != nil {
+			ccmd.Println(err)
+			return
+		}
+
+		hideUnsupportedFeatures(ccmd, dockerCli.Client().ClientVersion(), dockerCli.HasExperimental())
+
+		if err := ccmd.Help(); err != nil {
+			ccmd.Println(err)
+		}
+	})
+
+	flags = cmd.Flags()
+	flags.BoolVarP(&opts.Version, "version", "v", false, "Print version information and quit")
+	flags.StringVar(&opts.ConfigDir, "config", cliconfig.ConfigDir(), "Location of client config files")
+	opts.Common.InstallFlags(flags)
+
+	cmd.SetOutput(dockerCli.Out())
+	cmd.AddCommand(newDaemonCommand())
+	commands.AddCommands(cmd, dockerCli)
+    
+    fmt.Println("cli/command/container/exec.go  newFirstDockerCommand() end ")
+
+	return cmd
+}
+
+func noArgs(cmd *cobra.Command, args []string) error {
+	if len(args) == 0 {
+		return nil
+	}
+	return fmt.Errorf(
+		"docker: '%s' is not a docker command.\nSee 'docker --help'", args[0])
+}
+
+
+func showVersion() {
+	fmt.Printf("Docker version %s, build %s\n", dockerversion.Version, dockerversion.GitCommit)
+}
+
+func dockerPreRun(opts *cliflags.ClientOptions) {
+	cliflags.SetLogLevel(opts.Common.LogLevel)
+
+	if opts.ConfigDir != "" {
+		cliconfig.SetConfigDir(opts.ConfigDir)
+	}
+
+	if opts.Common.Debug {
+		utils.EnableDebug()
+	}
+}
+
+func hideUnsupportedFeatures(cmd *cobra.Command, clientVersion string, hasExperimental bool) {
+	cmd.Flags().VisitAll(func(f *pflag.Flag) {
+		// hide experimental flags
+		if !hasExperimental {
+			if _, ok := f.Annotations["experimental"]; ok {
+				f.Hidden = true
+			}
+		}
+
+		// hide flags not supported by the server
+		if flagVersion, ok := f.Annotations["version"]; ok && len(flagVersion) == 1 && versions.LessThan(clientVersion, flagVersion[0]) {
+			f.Hidden = true
+		}
+
+	})
+
+	for _, subcmd := range cmd.Commands() {
+		// hide experimental subcommands
+		if !hasExperimental {
+			if _, ok := subcmd.Tags["experimental"]; ok {
+				subcmd.Hidden = true
+			}
+		}
+
+		// hide subcommands not supported by the server
+		if subcmdVersion, ok := subcmd.Tags["version"]; ok && versions.LessThan(clientVersion, subcmdVersion) {
+			subcmd.Hidden = true
+		}
+	}
+}
+
+func isSupported(cmd *cobra.Command, clientVersion string, hasExperimental bool) error {
+	if !hasExperimental {
+		if _, ok := cmd.Tags["experimental"]; ok {
+			return errors.New("only supported with experimental daemon")
+		}
+	}
+
+	if cmdVersion, ok := cmd.Tags["version"]; ok && versions.LessThan(clientVersion, cmdVersion) {
+		return fmt.Errorf("only supported with daemon version >= %s", cmdVersion)
+	}
+
+	return nil
+}
+*/

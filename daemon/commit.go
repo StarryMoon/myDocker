@@ -8,6 +8,22 @@ import (
 	"strings"
 	"time"
 
+    "golang.org/x/net/context"
+
+    "github.com/docker/docker/api/types"
+//    "github.com/docker/docker/utils"
+//    "github.com/docker/docker/pkg/term"
+//    "github.com/docker/docker/api/types/strslice"
+//    "github.com/docker/docker/daemon/exec"
+//    "github.com/docker/docker/pkg/pools"
+//    "github.com/docker/docker/pkg/signal"
+
+
+//    "github.com/Sirupsen/logrus"
+//    "github.com/docker/docker/api/errors"
+//    "github.com/docker/docker/libcontainerd"
+
+
 	"github.com/docker/docker/api/types/backend"
 	containertypes "github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/builder/dockerfile"
@@ -18,6 +34,7 @@ import (
 	"github.com/docker/docker/pkg/ioutils"
 	"github.com/docker/docker/reference"
 )
+
 
 // merge merges two Config, the image container configuration (defaults values),
 // and the user container configuration, either passed by the API or generated
@@ -123,36 +140,50 @@ func merge(userConf, imageConf *containertypes.Config) error {
 func (daemon *Daemon) Commit(name string, c *backend.ContainerCommitConfig) (string, error) {
 	start := time.Now()
 
-    fmt.Println("daemon/commit.go  Commit")
+    fmt.Println("daemon/commit.go  Commit()")
 
 	container, err := daemon.GetContainer(name)
 	if err != nil {
 		return "", err
 	}
+    fmt.Println("daemon/commit.go  Commit() container.ImageID : ", container.ImageID)
+    fmt.Println("daemon/commit.go  Commit() name : ", name)
 
 	// It is not possible to commit a running container on Windows and on Solaris.
 	if (runtime.GOOS == "windows" || runtime.GOOS == "solaris") && container.IsRunning() {
 		return "", fmt.Errorf("%+v does not support commit of a running container", runtime.GOOS)
 	}
 
-	if c.Pause && !container.IsPaused() {
+
+    tmpConfig := container.Config
+    fmt.Println("daemon/commit.go  judge the status c.Pause container container.IsPause()",c.Pause , container.IsPaused())
+    fmt.Println("daemon/commit.go  container Config ", tmpConfig)
+
+/*	if c.Pause && !container.IsPaused() {
 		daemon.containerPause(container)
 		defer daemon.containerUnpause(container)
 	}
+*/
+    fmt.Println("daemon/commit.go  not Paused!!!!!!!!!!!!!!")
+
 
 	newConfig, err := dockerfile.BuildFromConfig(c.Config, c.Changes)
 	if err != nil {
 		return "", err
 	}
 
+
+    fmt.Println("daemon/commit.go   merge config")
 	if c.MergeConfigs {
 		if err := merge(newConfig, container.Config); err != nil {
 			return "", err
 		}
 	}
 
+    fmt.Println("daemon/commit.go  before exportContainerRw container : ", container)
 	rwTar, err := daemon.exportContainerRw(container)
 	if err != nil {
+        fmt.Println("daemon/commit.go  exportContainerRw is err!!!")
 		return "", err
 	}
 	defer func() {
@@ -167,6 +198,7 @@ func (daemon *Daemon) Commit(name string, c *backend.ContainerCommitConfig) (str
 	var osFeatures []string
 
 	if container.ImageID != "" {
+        fmt.Println("daemon/commit.go  container.ImageID : ", container.ImageID)
 		img, err := daemon.imageStore.Get(container.ImageID)
 		if err != nil {
 			return "", err
@@ -177,10 +209,12 @@ func (daemon *Daemon) Commit(name string, c *backend.ContainerCommitConfig) (str
 		osFeatures = img.OSFeatures
 	}
 
+    fmt.Println("daemon/commit.go  before register()")
 	l, err := daemon.layerStore.Register(rwTar, rootFS.ChainID())
 	if err != nil {
 		return "", err
 	}
+    fmt.Println("daemon/commit.go  after register()")
 	defer layer.ReleaseAndLog(daemon.layerStore, l)
 
 	h := image.History{
@@ -191,6 +225,7 @@ func (daemon *Daemon) Commit(name string, c *backend.ContainerCommitConfig) (str
 		EmptyLayer: true,
 	}
 
+    fmt.Println("daemon/commit.go  before diff()")
 	if diffID := l.DiffID(); layer.DigestSHA256EmptyTar != diffID {
 		h.EmptyLayer = false
 		rootFS.Append(diffID)
@@ -219,6 +254,7 @@ func (daemon *Daemon) Commit(name string, c *backend.ContainerCommitConfig) (str
 		return "", err
 	}
 
+    fmt.Println("daemon/commit.go  before create()")
 	id, err := daemon.imageStore.Create(config)
     fmt.Println("daemon/commit.go Commit finish creat image")
 
@@ -259,8 +295,258 @@ func (daemon *Daemon) Commit(name string, c *backend.ContainerCommitConfig) (str
 	return id.String(), nil
 }
 
+
+func (daemon *Daemon) GetFirstContainerStatus(id string) error {
+      container, err := daemon.GetContainer(id)
+      if err != nil {
+         return err
+      }
+      fmt.Println("daemon/commit.go GetFirstContainerStatus() isRunning ", container.IsRunning())
+      return nil
+}
+
+/*
+//func (daemon *Daemon) GetFirstContainer(id string) (*container.Container, error) {
+      container, err := daemon.GetContainer(id)
+      if err != nil {
+         return "", err
+      }
+      fmt.Println("daemon/commit.go GetFirstContainer()  return first container")
+    
+      return container, err
+}
+*/
+/*
+//func (daemon *Daemon) GetFirstContainerBuildingStatus(id string) error {
+      container, err := daemon.GetContainer(id)
+      if err != nil {
+         return err
+      }
+      fmt.Println("daemon/commit.go GetFirstContainerBuildingStatus() isBuilding : ", container.GetBuildingStatus())
+
+      return nil
+}
+*/
+
+func (daemon *Daemon) SetFirstContainerBuildingStatus(cId string, status bool) error {
+      container, err := daemon.GetContainer(cId)
+      if err != nil {
+         return err
+      }
+
+      fmt.Println("daemon/commit.go SetFirstContainerBuildingStatus() isBuilding before : ", container.GetBuildingStatus())
+      container.SetBuildingStatus(status)
+      fmt.Println("daemon/commit.go SetFirstContainerBuildingStatus() isBuilding after : ", container.GetBuildingStatus())
+      
+      return nil
+}
+
+
+// ContainerExecCreate sets up an exec in a running container.
+func (d *Daemon) FirstContainerExecCreate(name string, config *types.ExecConfig) (string, error) {
+
+    fmt.Println("daemon/commit.go  FirstContainerExecCreate()")
+
+    id, err := d.ContainerExecCreate(name, config)
+    if err != nil {
+       fmt.Println("daemon/commit.go  ContainerExecCreate() is err!!!")
+       return "", err
+    }
+
+    fmt.Println("daemon/commit.go  FirstContainerExecCreate() end")
+    return id, err
+
+
+/*    container, err := d.getActiveContainer(name)
+	if err != nil {
+		return "", err
+	}
+
+	cmd := strslice.StrSlice(config.Cmd)
+	entrypoint, args := d.getEntrypointAndArgs(strslice.StrSlice{}, cmd)
+
+	keys := []byte{}
+	if config.DetachKeys != "" {
+		keys, err = term.ToBytes(config.DetachKeys)
+		if err != nil {
+			err = fmt.Errorf("Invalid escape keys (%s) provided", config.DetachKeys)
+			return "", err
+		}
+	}
+
+	execConfig := exec.NewConfig()
+	execConfig.OpenStdin = config.AttachStdin
+	execConfig.OpenStdout = config.AttachStdout
+	execConfig.OpenStderr = config.AttachStderr
+	execConfig.ContainerID = container.ID
+	execConfig.DetachKeys = keys
+	execConfig.Entrypoint = entrypoint
+	execConfig.Args = args
+	execConfig.Tty = config.Tty
+	execConfig.Privileged = config.Privileged
+	execConfig.User = config.User
+
+	linkedEnv, err := d.setupLinkedContainers(container)
+	if err != nil {
+		return "", err
+	}
+	execConfig.Env = utils.ReplaceOrAppendEnvValues(container.CreateDaemonEnvironment(config.Tty, linkedEnv), config.Env)
+	if len(execConfig.User) == 0 {
+		execConfig.User = container.Config.User
+	}
+
+	d.registerExecCommand(container, execConfig)
+
+	d.LogContainerEvent(container, "exec_create: "+execConfig.Entrypoint+" "+strings.Join(execConfig.Args, " "))
+
+	return execConfig.ID, nil
+    */
+}
+
+
+
+// ContainerExecStart starts a previously set up exec instance. The
+// std streams are set up.
+// If ctx is cancelled, the process is terminated.
+func (d *Daemon) FirstContainerExecStart(ctx context.Context, name string, stdin io.ReadCloser, stdout io.Writer, stderr io.Writer) (err error) {
+
+    fmt.Println("daemon/commit.go  FirstContainerExecStart()")
+
+    if err := d.ContainerExecStart(ctx, name, stdin, stdout, stderr); err != nil {
+         fmt.Println("daemon/commit.go  FirstContainerExecStart() is err : ", err)
+    }
+
+/*
+	var (
+		cStdin           io.ReadCloser
+		cStdout, cStderr io.Writer
+	)
+
+	ec, err := d.getExecConfig(name)
+	if err != nil {
+		return errExecNotFound(name)
+	}
+    fmt.Println("daemon/commit.go  FirstContainerExecStart() execConfig : ", ec)
+
+	ec.Lock()
+	if ec.ExitCode != nil {
+		ec.Unlock()
+		err := fmt.Errorf("Error: Exec command %s has already run", ec.ID)
+		return errors.NewRequestConflictError(err)
+	}
+
+	if ec.Running {
+		ec.Unlock()
+		return fmt.Errorf("Error: Exec command %s is already running", ec.ID)
+	}
+	ec.Running = true
+	defer func() {
+		if err != nil {
+			ec.Running = false
+			exitCode := 126
+			ec.ExitCode = &exitCode
+		}
+	}()
+	ec.Unlock()
+
+	c := d.containers.Get(ec.ContainerID)
+	fmt.Println("daemon/commit.go  FirstContainerExecStart  starting exec command : ", ec.ID)
+    fmt.Println("daemon/commit.go  FirstContainerExecStart  in container : ", c.ID)
+
+	d.LogContainerEvent(c, "exec_start: "+ec.Entrypoint+" "+strings.Join(ec.Args, " "))
+
+	if ec.OpenStdin && stdin != nil {
+		r, w := io.Pipe()
+		go func() {
+			defer w.Close()
+			defer logrus.Debug("Closing buffered stdin pipe")
+			pools.Copy(w, stdin)
+		}()
+		cStdin = r
+	}
+	if ec.OpenStdout {
+		cStdout = stdout
+	}
+	if ec.OpenStderr {
+		cStderr = stderr
+	}
+
+	if ec.OpenStdin {
+		ec.StreamConfig.NewInputPipes()
+	} else {
+		ec.StreamConfig.NewNopInputPipe()
+	}
+
+	p := libcontainerd.Process{
+		Args:     append([]string{ec.Entrypoint}, ec.Args...),
+		Env:      ec.Env,
+		Terminal: ec.Tty,
+	}
+
+	if err := execSetPlatformOpt(c, ec, &p); err != nil {
+		return err
+	}
+
+	attachErr := container.AttachStreams(ctx, ec.StreamConfig, ec.OpenStdin, true, ec.Tty, cStdin, cStdout, cStderr, ec.DetachKeys)
+
+    fmt.Println("daemon/commit.go  FirstContainerExecStart()  AddProcess()")
+	systemPid, err := d.containerd.AddProcess(ctx, c.ID, name, p, ec.InitializeStdio)
+	if err != nil {
+        fmt.Println("daemon/commit.go  FirstContainerExecStart()  AddProcess() err!!!")
+		return err
+	}
+    fmt.Println("daemon/commit.go  FirstContainerExecStart()  AddProcess systemPid : ", systemPid)
+
+	ec.Lock()
+	ec.Pid = systemPid
+	ec.Unlock()
+
+	select {
+	case <-ctx.Done():
+		logrus.Debugf("Sending TERM signal to process %v in container %v", name, c.ID)
+        fmt.Println("daemon/commit.go FirstContainerExecStart() sendingterm signal")
+		d.containerd.SignalProcess(c.ID, name, int(signal.SignalMap["TERM"]))
+		select {
+		case <-time.After(termProcessTimeout * time.Second):
+			logrus.Infof("Container %v, process %v failed to exit within %d seconds of signal TERM - using the force", c.ID, name, termProcessTimeout)
+            fmt.Println("daemon/commit.go FirstContainerExecStart() failed to exit termProcessTimeout ", termProcessTimeout)
+			d.containerd.SignalProcess(c.ID, name, int(signal.SignalMap["KILL"]))
+		case <-attachErr:
+			// TERM signal worked
+            fmt.Println("daemon/commit.go FirstExecContainer() TERM signal worked")
+		}
+		return fmt.Errorf("context cancelled")
+	case err := <-attachErr:
+        fmt.Println("daemon/commit.go FirstContainerExecStart() attachErr")
+		if err != nil {
+			if _, ok := err.(container.DetachError); !ok {
+				return fmt.Errorf("exec attach failed with error: %v", err)
+			}
+			d.LogContainerEvent(c, "exec_detach")
+		}
+	}
+  */  
+    fmt.Println("daemon/commit.go FirstContainerExecStart() end")
+	return nil
+}
+
+
+
+// It will also return the error produced by `getConfig`
+func (d *Daemon) FirstContainerExecExists(name string) (bool, error) {
+	if _, err := d.getExecConfig(name); err != nil {
+		return false, err
+	}
+	return true, nil
+}
+
+
+
+
 func (daemon *Daemon) exportContainerRw(container *container.Container) (io.ReadCloser, error) {
-	if err := daemon.Mount(container); err != nil {
+	fmt.Println("daemon/commit.go exportContainerRw")
+    
+    if err := daemon.Mount(container); err != nil {
 		return nil, err
 	}
 

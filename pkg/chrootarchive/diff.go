@@ -2,6 +2,7 @@ package chrootarchive
 
 import (
 	"io"
+    "fmt"
 
 	"github.com/docker/docker/pkg/archive"
 )
@@ -19,5 +20,6 @@ func ApplyLayer(dest string, layer io.Reader) (size int64, err error) {
 // can only be uncompressed.
 // Returns the size in bytes of the contents of the layer.
 func ApplyUncompressedLayer(dest string, layer io.Reader, options *archive.TarOptions) (int64, error) {
+    fmt.Println("pkg/chrootarchive/diff.go  ApplyUncompressedLayer()")
 	return applyLayerHandler(dest, layer, options, false)
 }

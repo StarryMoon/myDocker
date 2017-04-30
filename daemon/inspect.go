@@ -108,6 +108,7 @@ func (daemon *Daemon) containerInspect120(name string) (*v1p20.ContainerJSON, er
 }
 
 func (daemon *Daemon) getInspectData(container *container.Container, size bool) (*types.ContainerJSONBase, error) {
+    fmt.Println("daemon/inspect.go  getInspectData()")
 	// make a copy to play with
 	hostConfig := *container.HostConfig
 

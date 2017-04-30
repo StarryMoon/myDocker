@@ -20,12 +20,16 @@ import (
 
 // ContainerStart starts a container.
 func (daemon *Daemon) ContainerStart(name string, hostConfig *containertypes.HostConfig, checkpoint string, checkpointDir string) error {
+
+    fmt.Println("daemon/start.go ContainerStart()")
+
 	if checkpoint != "" && !daemon.HasExperimental() {
 		return apierrors.NewBadRequestError(fmt.Errorf("checkpoint is only supported in experimental mode"))
 	}
 
 	container, err := daemon.GetContainer(name)
 	if err != nil {
+        fmt.Println("daemon/start.go ContainerStart don't get container")
 		return err
 	}
 
@@ -84,7 +88,8 @@ func (daemon *Daemon) ContainerStart(name string, hostConfig *containertypes.Hos
 		}
 	}
 
-    fmt.Println("daemon/start.go ContainerStart")
+    fmt.Println("daemon/start.go ContainerStart() container status : ", container.IsRunning())
+    fmt.Println("daemon/start.go ContainerStart() End")
 
 	return daemon.containerStart(container, checkpoint, checkpointDir, true)
 }
@@ -99,7 +104,8 @@ func (daemon *Daemon) Start(container *container.Container) error {
 // between containers. The container is left waiting for a signal to
 // begin running.
 func (daemon *Daemon) containerStart(container *container.Container, checkpoint string, checkpointDir string, resetRestartManager bool) (err error) {
-	start := time.Now()
+	fmt.Println("dockerfile/dispatchers.go  containerstart()")
+    start := time.Now()
 	container.Lock()
 	defer container.Unlock()
 

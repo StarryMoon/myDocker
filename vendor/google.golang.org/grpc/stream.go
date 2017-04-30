@@ -40,6 +40,8 @@ import (
 	"math"
 	"sync"
 	"time"
+   
+    "fmt"
 
 	"golang.org/x/net/context"
 	"golang.org/x/net/trace"
@@ -309,6 +311,7 @@ func (cs *clientStream) SendMsg(m interface{}) (err error) {
 }
 
 func (cs *clientStream) RecvMsg(m interface{}) (err error) {
+    fmt.Println("vendor/google/grpc/stream.go   RecvMsg() ")
 	err = recv(cs.p, cs.codec, cs.s, cs.dc, m, math.MaxInt32)
 	defer func() {
 		// err != nil indicates the termination of the stream.
@@ -442,6 +445,7 @@ func (ss *serverStream) Context() context.Context {
 }
 
 func (ss *serverStream) SendHeader(md metadata.MD) error {
+    fmt.Println("vendor/google/grpc/stream.go  SendHeader()")
 	return ss.t.WriteHeader(ss.s, md)
 }
 
@@ -454,6 +458,7 @@ func (ss *serverStream) SetTrailer(md metadata.MD) {
 }
 
 func (ss *serverStream) SendMsg(m interface{}) (err error) {
+    fmt.Println("vendor/google/grpc/stream.go  SendMsg()")
 	defer func() {
 		if ss.trInfo != nil {
 			ss.mu.Lock()

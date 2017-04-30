@@ -83,6 +83,7 @@ func applyLayer() {
 // applies it to the directory `dest`. Returns the size in bytes of the
 // contents of the layer.
 func applyLayerHandler(dest string, layer io.Reader, options *archive.TarOptions, decompress bool) (size int64, err error) {
+    fmt.Println("pkg/chrootarchive/diff_unix.go  applyLayerHandler()")
 	dest = filepath.Clean(dest)
 	if decompress {
 		decompressed, err := archive.DecompressStream(layer)
@@ -122,7 +123,11 @@ func applyLayerHandler(dest string, layer io.Reader, options *archive.TarOptions
 	// Stdout should be a valid JSON struct representing an applyLayerResponse.
 	response := applyLayerResponse{}
 	decoder := json.NewDecoder(outBuf)
+    fmt.Println("pkg/chrootarchive/diff_unix.go  applyLayerHandler() before decode response")
+    fmt.Println("pkg/chrootarchive/diff_unix.go  applyLayerHandler() response : ", response)
+    fmt.Println("pkg/chrootarchive/diff_unix.go  applyLayerHandler() outBuf : ", outBuf)
 	if err = decoder.Decode(&response); err != nil {
+    fmt.Println("pkg/chrootarchive/diff_unix.go  applyLayerHandler() is err : ", err)
 		return 0, fmt.Errorf("unable to decode ApplyLayer JSON response: %s", err)
 	}
 

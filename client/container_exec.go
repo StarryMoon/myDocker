@@ -3,6 +3,8 @@ package client
 import (
 	"encoding/json"
 
+    "fmt"
+
 	"github.com/docker/docker/api/types"
 	"golang.org/x/net/context"
 )
@@ -10,6 +12,8 @@ import (
 // ContainerExecCreate creates a new exec configuration to run an exec process.
 func (cli *Client) ContainerExecCreate(ctx context.Context, container string, config types.ExecConfig) (types.IDResponse, error) {
 	var response types.IDResponse
+
+    fmt.Println("client/container_exec.go  ContainerExecCreate()")
 
 	if err := cli.NewVersionError("1.25", "env"); len(config.Env) != 0 && err != nil {
 		return response, err
@@ -26,6 +30,8 @@ func (cli *Client) ContainerExecCreate(ctx context.Context, container string, co
 
 // ContainerExecStart starts an exec process already created in the docker host.
 func (cli *Client) ContainerExecStart(ctx context.Context, execID string, config types.ExecStartCheck) error {
+    fmt.Println("client/container_exec.go  ContainerExecStart()")
+
 	resp, err := cli.post(ctx, "/exec/"+execID+"/start", nil, config, nil)
 	ensureReaderClosed(resp)
 	return err

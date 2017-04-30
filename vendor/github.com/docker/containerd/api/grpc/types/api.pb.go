@@ -149,6 +149,8 @@ func (*CreateContainerResponse) ProtoMessage()               {}
 func (*CreateContainerResponse) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{5} }
 
 func (m *CreateContainerResponse) GetContainer() *Container {
+    fmt.Println("vendor/github.com/docker/containerd/api/grpc/types/api.pb.go  GetContainer()")
+    fmt.Println("vendor/github.com/docker/containerd/api/grpc/types/api.pb.go  GetContainer() cID : ", m.Container.Id)
 	if m != nil {
 		return m.Container
 	}
@@ -1018,7 +1020,8 @@ func (c *aPIClient) GetServerVersion(ctx context.Context, in *GetServerVersionRe
 }
 
 func (c *aPIClient) CreateContainer(ctx context.Context, in *CreateContainerRequest, opts ...grpc.CallOption) (*CreateContainerResponse, error) {
-	out := new(CreateContainerResponse)
+    fmt.Println("vendor/github/docker/containerd/grpc/types/api.pb.go  CreateContainer()")
+    out := new(CreateContainerResponse)
 	err := grpc.Invoke(ctx, "/types.API/CreateContainer", in, out, c.cc, opts...)
 	if err != nil {
 		return nil, err
@@ -1057,6 +1060,7 @@ func (c *aPIClient) AddProcess(ctx context.Context, in *AddProcessRequest, opts 
 	out := new(AddProcessResponse)
 	err := grpc.Invoke(ctx, "/types.API/AddProcess", in, out, c.cc, opts...)
 	if err != nil {
+        fmt.Println("vendor/github/docker/containerd/api/grpc/types/api.pb.go  AddProcess()  is err!!!")
 		return nil, err
 	}
 	return out, nil
@@ -1123,6 +1127,7 @@ type aPIEventsClient struct {
 }
 
 func (x *aPIEventsClient) Recv() (*Event, error) {
+    fmt.Println("vendor/github/docker/containerd/api/grpc/types/api.pb.go    Recv()")
 	m := new(Event)
 	if err := x.ClientStream.RecvMsg(m); err != nil {
 		return nil, err
@@ -1358,6 +1363,7 @@ type aPIEventsServer struct {
 }
 
 func (x *aPIEventsServer) Send(m *Event) error {
+    fmt.Println("vendor/github/docker/containerd/api/grpc/types/api.pb.go  ss.SendMsg()")
 	return x.ServerStream.SendMsg(m)
 }
 

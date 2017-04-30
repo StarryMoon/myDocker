@@ -460,6 +460,7 @@ func loadDaemonCliConfig(opts daemonOptions) (*daemon.Config, error) {
 }
 
 func initRouter(s *apiserver.Server, d *daemon.Daemon, c *cluster.Cluster) {
+    fmt.Println("cmd/dockerd/daemon.go  initRouter()")
 	decoder := runconfig.ContainerDecoder{}
 
 	routers := []router.Router{

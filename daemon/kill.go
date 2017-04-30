@@ -92,6 +92,7 @@ func (daemon *Daemon) killWithSignal(container *container.Container, sig int) er
 	}
 
 	if err := daemon.kill(container, sig); err != nil {
+        fmt.Println("daemon/kill.go  killWithSignal()")
 		err = fmt.Errorf("Cannot kill container %s: %s", container.ID, err)
 		// if container or process not exists, ignore the error
 		if strings.Contains(err.Error(), "container not found") ||

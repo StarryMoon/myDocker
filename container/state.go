@@ -177,6 +177,7 @@ func wait(waitChan <-chan struct{}, timeout time.Duration) error {
 // immediately. If you want wait forever you must supply negative timeout.
 // Returns exit code, that was passed to SetStopped
 func (s *State) WaitStop(timeout time.Duration) (int, error) {
+    fmt.Println("container/state.go WaitStop() timeout is ", timeout)
 	ctx := context.Background()
 	if timeout >= 0 {
 		var cancel func()

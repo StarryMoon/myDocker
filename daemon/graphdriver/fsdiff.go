@@ -3,6 +3,7 @@ package graphdriver
 import (
 	"io"
 	"time"
+    "fmt"
 
 	"github.com/Sirupsen/logrus"
 	"github.com/docker/docker/pkg/archive"
@@ -127,6 +128,7 @@ func (gdw *NaiveDiffDriver) Changes(id, parent string) ([]archive.Change, error)
 // layer with the specified id and parent, returning the size of the
 // new layer in bytes.
 func (gdw *NaiveDiffDriver) ApplyDiff(id, parent string, diff io.Reader) (size int64, err error) {
+    fmt.Println("daemon/graphdriver/fsdiff.go  ApplyDiff()")
 	driver := gdw.ProtoDriver
 
 	// Mount the root filesystem so we can apply the diff/layer.
@@ -136,14 +138,17 @@ func (gdw *NaiveDiffDriver) ApplyDiff(id, parent string, diff io.Reader) (size i
 	}
 	defer driver.Put(id)
 
+    fmt.Println("daemon/graphdriver/fsdiff.go  ApplyDiff() driverget")
 	options := &archive.TarOptions{UIDMaps: gdw.uidMaps,
 		GIDMaps: gdw.gidMaps}
 	start := time.Now().UTC()
 	logrus.Debug("Start untar layer")
+    fmt.Println("daemon/graphdriver/fsdiff.go  ApplyDiff() before applyuncompressedlayer()")
 	if size, err = ApplyUncompressedLayer(layerFs, diff, options); err != nil {
 		return
 	}
 	logrus.Debugf("Untar time: %vs", time.Now().UTC().Sub(start).Seconds())
+    fmt.Println("daemon/graphdriver/fsdiff.go  ApplyDiff() after applyuncompressedlayer()")
 
 	return
 }

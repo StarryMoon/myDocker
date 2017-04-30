@@ -22,6 +22,8 @@ func (e ErrImageDoesNotExist) Error() string {
 // refOrID.
 func (daemon *Daemon) GetImageID(refOrID string) (image.ID, error) {
 	id, ref, err := reference.ParseIDOrReference(refOrID)
+    fmt.Println("daemon/image.go GetImageID()")
+
 	if err != nil {
 		return "", err
 	}
@@ -59,7 +61,9 @@ func (daemon *Daemon) GetImageID(refOrID string) (image.ID, error) {
 
 // GetImage returns an image corresponding to the image referred to by refOrID.
 func (daemon *Daemon) GetImage(refOrID string) (*image.Image, error) {
-	imgID, err := daemon.GetImageID(refOrID)
+    fmt.Println("daemon/image.go GetImage() refOrID is :", refOrID)
+
+    imgID, err := daemon.GetImageID(refOrID)
 	if err != nil {
 		return nil, err
 	}

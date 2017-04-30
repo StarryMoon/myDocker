@@ -17,10 +17,14 @@ import (
 func (daemon *Daemon) StateChanged(id string, e libcontainerd.StateInfo) error {
 	c := daemon.containers.Get(id)
 	if c == nil {
+        fmt.Println("daemon/monitor.go   no such container")
 		return fmt.Errorf("no such container: %s", id)
 	}
 
-    fmt.Println("daemon/monitor.go  StateChanged ")
+    fmt.Println("daemon/monitor.go  StateChanged  id: ", id)
+    fmt.Println("daemon/monitor.go  StateChanged  State: ", e.State)
+    fmt.Println("daemon/monitor.go  StateChanged  Pid: ", e.Pid)
+    fmt.Println("daemon/monitor.go  StateChanged  ProcessID: ", e.ProcessID)
 
 	switch e.State {
 	case libcontainerd.StateOOM:
@@ -108,14 +112,21 @@ func (daemon *Daemon) StateChanged(id string, e libcontainerd.StateInfo) error {
         fmt.Println("daemon/monitor.go  case StateStart")
 		// Container is already locked in this case
 		c.SetRunning(int(e.Pid), e.State == libcontainerd.StateStart)
+        fmt.Println("daemon/monitor.go case StateStart after Running running : ", int(e.Pid))
 		c.HasBeenManuallyStopped = false
 		c.HasBeenStartedBefore = true
 		if err := c.ToDisk(); err != nil {
+            fmt.Println("daemon/monitor.go case StateStart toDisk  err")
 			c.Reset(false)
 			return err
 		}
+        fmt.Println("daemon/monitor.go case StateStart before iHealth")
 		daemon.initHealthMonitor(c)
+        fmt.Println("daemon/monitor.go case StateStart initHealthMonitor")
 		daemon.LogContainerEvent(c, "start")
+        fmt.Println("daemon/monitor.go case StateStart LogContainerEvent")
+        fmt.Println("daemon/monitor.go case StateStart sleep 10 seconds")
+        time.Sleep(time.Second * 10)
 	case libcontainerd.StatePause:
 		// Container is already locked in this case
 		c.Paused = true
@@ -135,4 +146,28 @@ func (daemon *Daemon) StateChanged(id string, e libcontainerd.StateInfo) error {
 	}
 
 	return nil
+}
+
+
+func (daemon *Daemon) GetFirstContainerBuildingStatus(id string) bool {
+      fmt.Println("daemon/monitor.go GetFirstContainerBuildingStatus()")
+      container, err := daemon.GetContainer(id)
+      if err != nil {
+         fmt.Println("daemon/monitor.go GetFirstContainerBuildingStatus() error!!!")
+         return false
+      }
+
+      return container.GetBuildingStatus()
+}
+
+
+func (daemon *Daemon) TriggerExitEvent(cId string) error {
+     fmt.Println("daemon/monitor.go TriggerExitEvent()")
+
+     if err :=  daemon.containerd.TriggerHandleStream(cId); err != nil {
+        fmt.Println("daemon/monitor.go TriggerExitEvent() error!!!")
+        return err
+     }
+     
+     return nil
 }

@@ -16,6 +16,15 @@ import (
 	"strings"
 	"time"
 
+//    firstcontainercmd "github.com/docker/docker/cmd/firstContainer"
+	"github.com/docker/docker/cli/command"
+    //"github.com/docker/docker/cli/command/commands"
+	"github.com/docker/docker/pkg/term"
+         clicmdcontainer "github.com/docker/docker/cli/command/container"
+//    "github.com/spf13/cobra"
+
+    "golang.org/x/net/context"
+
 	"github.com/Sirupsen/logrus"
 	"github.com/docker/docker/api"
 	"github.com/docker/docker/api/types"
@@ -32,18 +41,21 @@ import (
 // Sets the environment variable foo to bar, also makes interpolation
 // in the dockerfile available from the next statement on via ${foo}.
 //
-func env(b *Builder, args []string, attributes map[string]bool, original string) error {
+func env(b *Builder, args []string, attributes map[string]bool, original string, tmpCID string, finishedFlag bool) (string, error) {
+    fmt.Println("dockerfile/dispatchers.go env() tmpContainerID ", tmpCID) 
+
 	if len(args) == 0 {
-		return errAtLeastOneArgument("ENV")
+		return "", errAtLeastOneArgument("ENV")
 	}
+    fmt.Println("dispatchere.go  env()")
 
 	if len(args)%2 != 0 {
 		// should never get here, but just in case
-		return errTooManyArguments("ENV")
+		return "", errTooManyArguments("ENV")
 	}
 
 	if err := b.flags.Parse(); err != nil {
-		return err
+		return "", err
 	}
 
 	// TODO/FIXME/NOT USED
@@ -69,7 +81,7 @@ func env(b *Builder, args []string, attributes map[string]bool, original string)
 		// value ==> args[j+1]
 
 		if len(args[j]) == 0 {
-			return errBlankCommandNames("ENV")
+			return "", errBlankCommandNames("ENV")
 		}
 		newVar := args[j] + "=" + args[j+1] + ""
 		commitStr += " " + newVar
@@ -102,13 +114,16 @@ func env(b *Builder, args []string, attributes map[string]bool, original string)
 // MAINTAINER some text <maybe@an.email.address>
 //
 // Sets the maintainer metadata.
-func maintainer(b *Builder, args []string, attributes map[string]bool, original string) error {
+func maintainer(b *Builder, args []string, attributes map[string]bool, original string, tmpCID string, finishedFlag bool) (string, error) {
+    fmt.Println("dockerfile/dispatchers.go maintainer() tmpContainerID ", tmpCID) 
+
 	if len(args) != 1 {
-		return errExactlyOneArgument("MAINTAINER")
+		return "", errExactlyOneArgument("MAINTAINER")
 	}
+    fmt.Println("dispatchers.go  maintainer()")
 
 	if err := b.flags.Parse(); err != nil {
-		return err
+		return "", err
 	}
 
 	b.maintainer = args[0]
@@ -119,17 +134,21 @@ func maintainer(b *Builder, args []string, attributes map[string]bool, original 
 //
 // Sets the Label variable foo to bar,
 //
-func label(b *Builder, args []string, attributes map[string]bool, original string) error {
-	if len(args) == 0 {
-		return errAtLeastOneArgument("LABEL")
+func label(b *Builder, args []string, attributes map[string]bool, original string, tmpCID string, finishedFlag bool) (string, error) {
+    fmt.Println("dockerfile/dispatchers.go label() tmpContainerID ", tmpCID) 
+	
+    if len(args) == 0 {
+		return "", errAtLeastOneArgument("LABEL")
 	}
+    fmt.Println("dispatchers.go  label()")
+
 	if len(args)%2 != 0 {
 		// should never get here, but just in case
-		return errTooManyArguments("LABEL")
+		return "", errTooManyArguments("LABEL")
 	}
 
 	if err := b.flags.Parse(); err != nil {
-		return err
+		return "", err
 	}
 
 	commitStr := "LABEL"
@@ -143,7 +162,7 @@ func label(b *Builder, args []string, attributes map[string]bool, original strin
 		// value ==> args[j+1]
 
 		if len(args[j]) == 0 {
-			return errBlankCommandNames("LABEL")
+			return "", errBlankCommandNames("LABEL")
 		}
 
 		newVar := args[j] + "=" + args[j+1] + ""
@@ -160,13 +179,17 @@ func label(b *Builder, args []string, attributes map[string]bool, original strin
 // Add the file 'foo' to '/path'. Tarball and Remote URL (git, http) handling
 // exist here. If you do not wish to have this automatic handling, use COPY.
 //
-func add(b *Builder, args []string, attributes map[string]bool, original string) error {
+func add(b *Builder, args []string, attributes map[string]bool, original string, tmpCID string, finishedFlag bool) (string, error) {
+    fmt.Println("dockerfile/dispatchers.go add() tmpContainerID ", tmpCID)
+
 	if len(args) < 2 {
-		return errAtLeastTwoArguments("ADD")
+		return "", errAtLeastTwoArguments("ADD")
 	}
+    fmt.Println("dispatchers.go add()")
+
 
 	if err := b.flags.Parse(); err != nil {
-		return err
+		return "", err
 	}
 
 	return b.runContextCommand(args, true, true, "ADD")
@@ -176,13 +199,16 @@ func add(b *Builder, args []string, attributes map[string]bool, original string)
 //
 // Same as 'ADD' but without the tar and remote url handling.
 //
-func dispatchCopy(b *Builder, args []string, attributes map[string]bool, original string) error {
+func dispatchCopy(b *Builder, args []string, attributes map[string]bool, original string, tmpCID string, finishedFlag bool) (string, error) {
+    fmt.Println("dockerfile/dispatchers.go dispatchCopy() tmpContainerID ", tmpCID)
+
 	if len(args) < 2 {
-		return errAtLeastTwoArguments("COPY")
+		return "", errAtLeastTwoArguments("COPY")
 	}
+    fmt.Println("dispatchers.go   dispatchCopy()")
 
 	if err := b.flags.Parse(); err != nil {
-		return err
+		return "", err
 	}
 
 	return b.runContextCommand(args, false, false, "COPY")
@@ -192,13 +218,17 @@ func dispatchCopy(b *Builder, args []string, attributes map[string]bool, origina
 //
 // This sets the image the dockerfile will build on top of.
 //
-func from(b *Builder, args []string, attributes map[string]bool, original string) error {
-	if len(args) != 1 {
-		return errExactlyOneArgument("FROM")
+func from(b *Builder, args []string, attributes map[string]bool, original string, tmpCID string, finishedFlag bool) (string, error) {
+    fmt.Println("dockerfile/dispatchers.go from() tmpContainerID ", tmpCID)
+	
+    fmt.Println("builder/dispatches.go FROM")
+
+    if len(args) != 1 {
+		return "", errExactlyOneArgument("FROM")
 	}
 
 	if err := b.flags.Parse(); err != nil {
-		return err
+		return "", err
 	}
 
 	name := args[0]
@@ -211,20 +241,22 @@ func from(b *Builder, args []string, attributes map[string]bool, original string
 	// Windows cannot support a container with no base image.
 	if name == api.NoBaseImageSpecifier {
 		if runtime.GOOS == "windows" {
-			return fmt.Errorf("Windows does not support FROM scratch")
+			return "", fmt.Errorf("Windows does not support FROM scratch")
 		}
 		b.image = ""
 		b.noBaseImage = true
+        fmt.Println("dispatchers.go/from api.NoBaseImageSpecifier")
 	} else {
 		// TODO: don't use `name`, instead resolve it to a digest
 		if !b.options.PullParent {
 			image, err = b.docker.GetImageOnBuild(name)
 			// TODO: shouldn't we error out if error is different from "not found" ?
+            fmt.Println("dispatchers.go/from   pull image")
 		}
 		if image == nil {
 			image, err = b.docker.PullOnBuild(b.clientCtx, name, b.options.AuthConfigs, b.Output)
 			if err != nil {
-				return err
+				return "", err
 			}
 		}
 	}
@@ -232,6 +264,10 @@ func from(b *Builder, args []string, attributes map[string]bool, original string
 
 	return b.processImageFrom(image)
 }
+
+
+
+
 
 // ONBUILD RUN echo yo
 //
@@ -242,21 +278,25 @@ func from(b *Builder, args []string, attributes map[string]bool, original string
 // special cases. search for 'OnBuild' in internals.go for additional special
 // cases.
 //
-func onbuild(b *Builder, args []string, attributes map[string]bool, original string) error {
-	if len(args) == 0 {
-		return errAtLeastOneArgument("ONBUILD")
+func onbuild(b *Builder, args []string, attributes map[string]bool, original string, tmpCID string, finishedFlag bool) (string, error) {
+    fmt.Println("dockerfile/dispatchers.go onbuild() tmpContainerID ", tmpCID)
+	
+    if len(args) == 0 {
+		return "", errAtLeastOneArgument("ONBUILD")
 	}
+    fmt.Println("dispatchers.go  onbuild()")
+
 
 	if err := b.flags.Parse(); err != nil {
-		return err
+		return "", err
 	}
 
 	triggerInstruction := strings.ToUpper(strings.TrimSpace(args[0]))
 	switch triggerInstruction {
 	case "ONBUILD":
-		return fmt.Errorf("Chaining ONBUILD via `ONBUILD ONBUILD` isn't allowed")
+		return "", fmt.Errorf("Chaining ONBUILD via `ONBUILD ONBUILD` isn't allowed")
 	case "MAINTAINER", "FROM":
-		return fmt.Errorf("%s isn't allowed as an ONBUILD trigger", triggerInstruction)
+		return "", fmt.Errorf("%s isn't allowed as an ONBUILD trigger", triggerInstruction)
 	}
 
 	original = regexp.MustCompile(`(?i)^\s*ONBUILD\s*`).ReplaceAllString(original, "")
@@ -269,21 +309,24 @@ func onbuild(b *Builder, args []string, attributes map[string]bool, original str
 //
 // Set the working directory for future RUN/CMD/etc statements.
 //
-func workdir(b *Builder, args []string, attributes map[string]bool, original string) error {
+func workdir(b *Builder, args []string, attributes map[string]bool, original string, tmpCID string, finishedFlag bool) (string, error) {
+    fmt.Println("dockerfile/dispatchers.go workdir() tmpContainerID ", tmpCID)
+
 	if len(args) != 1 {
-		return errExactlyOneArgument("WORKDIR")
+		return "", errExactlyOneArgument("WORKDIR")
 	}
+    fmt.Println("dispatchers.go workdir()")
 
 	err := b.flags.Parse()
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	// This is from the Dockerfile and will not necessarily be in platform
 	// specific semantics, hence ensure it is converted.
 	b.runConfig.WorkingDir, err = normaliseWorkdir(b.runConfig.WorkingDir, args[0])
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	// For performance reasons, we explicitly do a create/mkdir now
@@ -293,7 +336,7 @@ func workdir(b *Builder, args []string, attributes map[string]bool, original str
 	if b.disableCommit {
 		// Don't call back into the daemon if we're going through docker commit --change "WORKDIR /foo".
 		// We've already updated the runConfig and that's enough.
-		return nil
+		return "", nil
 	}
 	b.runConfig.Image = b.image
 
@@ -302,18 +345,18 @@ func workdir(b *Builder, args []string, attributes map[string]bool, original str
 	defer func(cmd strslice.StrSlice) { b.runConfig.Cmd = cmd }(cmd)
 
 	if hit, err := b.probeCache(); err != nil {
-		return err
+		return "", err
 	} else if hit {
-		return nil
+		return "", nil
 	}
 
 	container, err := b.docker.ContainerCreate(types.ContainerCreateConfig{Config: b.runConfig})
 	if err != nil {
-		return err
+		return "", err
 	}
 	b.tmpContainers[container.ID] = struct{}{}
 	if err := b.docker.ContainerCreateWorkdir(container.ID); err != nil {
-		return err
+		return "", err
 	}
 
 	return b.commit(container.ID, b.runConfig.Cmd, "WORKDIR "+b.runConfig.WorkingDir)
@@ -329,13 +372,17 @@ func workdir(b *Builder, args []string, attributes map[string]bool, original str
 // RUN echo hi          # cmd /S /C echo hi   (Windows)
 // RUN [ "echo", "hi" ] # echo hi
 //
-func run(b *Builder, args []string, attributes map[string]bool, original string) error {
-	if b.image == "" && !b.noBaseImage {
-		return fmt.Errorf("Please provide a source image with `from` prior to run")
+func run(b *Builder, args []string, attributes map[string]bool, original string, tmpCID string, finishedFlag bool) (string, error) {
+    fmt.Println("dockerfile/dispatchers.go run() tmpContainerID ", tmpCID)
+    fmt.Println("dockerfile/dispatchers.go run() b.image", b.image)
+    
+    if b.image == "" && !b.noBaseImage {
+		return "", fmt.Errorf("Please provide a source image with `from` prior to run")
 	}
+    fmt.Println("dispatchers.go  run()")
 
 	if err := b.flags.Parse(); err != nil {
-		return err
+		return "", err
 	}
 
 	args = handleJSONArgs(args, attributes)
@@ -406,10 +453,10 @@ func run(b *Builder, args []string, attributes map[string]bool, original string)
 	b.runConfig.Cmd = saveCmd
 	hit, err := b.probeCache()
 	if err != nil {
-		return err
+		return "", err
 	}
 	if hit {
-		return nil
+		return "", nil
 	}
 
 	// set Cmd manually, this is special case only for Dockerfiles
@@ -423,15 +470,119 @@ func run(b *Builder, args []string, attributes map[string]bool, original string)
 
     fmt.Println("dispatches.go/[BUILDER] Command to be executed:  %v", b.runConfig.Cmd)
 
+    fmt.Println("builder/dockerfile/dispatchers.go  run()   not create container!!!")
+
+/*    
+    execConfig := &types.ExecConfig{
+          User:            "",
+          Privileged:      false,
+          Tty:             false,
+          AttachStdin:     false,
+          AttachStderr:    true,
+          AttachStdout:    true,
+          Detach:          false,
+          DetachKeys:      "",
+          Env:             []string{},
+          Cmd:             b.runConfig.Cmd,
+    }
+
+    tmpContainerID := tmpCID
+    if name, err := b.startFirstContainerExecCreate(tmpContainerID, execConfig); err != nil {
+       return "", err
+    }else {
+       b.startFirstContainerExecStart(name)
+    }
+
+
+    return "", nil
+*/
+
 	cID, err := b.create()
-    fmt.Println("RUN cmd ... the container has been created!")
+    fmt.Println("dispatches.go/RUN cmd ... the container has been created!")
 	if err != nil {
-		return err
+		return "", err
 	}
 
-	if err := b.run(cID); err != nil {
-		return err
+    fmt.Println("dispatchers.go/run()  inspect the base image ")
+    fmt.Println("dispatchers.go/run()  inspect the base image ", b.image)
+    fmt.Println("dispatchers.go/run()  inspect the base image ", b.runConfig.Image)
+    fmt.Println("dispatchers.go/run()  inspect the base image ", b.runConfig.Cmd)
+    fmt.Println("dispatchers.go/run()  inspect the base image ", b.runConfig.Env)
+    fmt.Println("dispatchers.go/run()  inspect the base image ", b.runConfig.ArgsEscaped)
+
+    
+    if err := b.docker.SetFirstContainerBuildingStatus(cID, true); err != nil {
+        return "", err 
+    }
+
+   
+    fmt.Println("dockerfile/dispatchers.go  run() before the container running")
+    if err := b.run(cID); err != nil {
+		return "", err
 	}
+    fmt.Println("dockerfile/dispatchers.go  run() is finished the container has been running")
+
+
+
+    var tmpCmd = []string{"/bin/sh -c mkdir -p", "/usr/lib/jvmmmmmmmmmmmmm"}
+ //   tmpPrefix := "exec " + cID
+ //   var tmpCmd = []string{tmpPrefix, "/bin/sh -c mkdir -p", "/usr/lib/jvmmmmmmmmmmmmm"}
+
+    execConfig := &types.ExecConfig{
+          User:            "",
+          Privileged:      false,
+          Tty:             false,
+          AttachStdin:     false,
+          AttachStderr:    true,
+          AttachStdout:    true,
+          Detach:          false,
+          DetachKeys:      "",
+          Env:             []string{},
+//          Cmd:             b.runConfig.Cmd,
+          Cmd:             tmpCmd,
+    }
+
+
+
+
+	stdin, stdout, stderr := term.StdStreams()
+	dockerCli := command.NewFirstDockerCli(stdin, stdout, stderr, cID, execConfig)
+    fmt.Println("builder/dockerfile/dispatchers.go  newDockerCli() dockercli : ", dockerCli)
+    //cobracmd := clicmdcontainer.NewExecCommand(dockerCli)
+    //fmt.Println("builder/dockerfile/dispatchers.go  newexeccommand() cobracmd : ", cobracmd)
+    if err := clicmdcontainer.RunExecInFirstContainer(dockerCli);err != nil {
+      fmt.Println("builder/dockerfile/dispatchers.go  runExecInFirstContainer() is err!!!")
+    }
+    fmt.Println("builder/dockerfile/dispatchers.go  run() after RunExecFirstContainer()")
+
+
+/*    fmt.Println("builder/dockerfile/dispatchers.go  run() before() main()")
+	stdin, stdout, stderr := term.StdStreams()
+//    stdin = nil
+	dockerCli := command.NewFirstDockerCli(stdin, stdout, stderr, cID, execConfig)
+//    firstDockerCmd := clicmdcontainer.newFirstDockerCommand(dockerCli)
+    firstDockerCmd := firstcontainercmd.newFirstDockerCommand(dockerCli)
+    firstDockerCmd.SetArgs(tmpCmd)
+
+    if err := firstDockerCmd.Excute(); err != nil {
+        fmt.Println("builder/dockerfile/dispatchers.go  run() excute is err!!!")
+    }
+
+    fmt.Println("builder/dockerfile/dispatchers.go  run() dockerCli : ", dockerCli)
+*/
+
+    tmpContainerID := cID
+//    if name, err := b.startFirstContainerExecCreate(tmpContainerID, execConfig); err != nil {
+//       fmt.Println("dockerfile/dispatchers.go  run() startFirstContainerExecCreate() err")
+//       return "", err
+//    }else {
+//       fmt.Println("dockerfile/dispatchers.go  run() before startFirstContainerExecStart()")
+//       b.startFirstContainerExecStart(name)
+//    }
+//    fmt.Println("dockerfile/dispatchers.go  run() after startFirstContainerExecStart()")
+    fmt.Println("dockerfile/dispatchers.go  run() before stopContainerBeforeCommit()")
+    b.stopContainerBeforeCommit(tmpContainerID)
+
 
 	// revert to original config environment and set the command string to
 	// have the build-time env vars in it (if any) so that future cache look-ups
@@ -439,17 +590,80 @@ func run(b *Builder, args []string, attributes map[string]bool, original string)
 	b.runConfig.Env = env
 	b.runConfig.Cmd = saveCmd
 	return b.commit(cID, cmd, "run")
+
 }
+
+//name     container 
+//config   exec 
+func (b *Builder) startFirstContainerExecCreate(name string, execConfig *types.ExecConfig) (string, error) {
+    fmt.Println("builder/dockerfile/dispatchers.go   startFirstContainerExecCreate()")
+
+	if len(execConfig.Cmd) == 0 {
+		return "", fmt.Errorf("No exec command specified")
+	}
+
+    fmt.Println("builder/dockerfile/dispatchers.go  startFirstContainerExecCreate() : ", execConfig.Cmd)
+
+	id, err := b.docker.FirstContainerExecCreate(name, execConfig)
+	if err != nil {
+		fmt.Println("builder/dockerfile/dispatchers.go  startFirstContainerExecCreate()  err!=nil")
+        return "", err
+	}else {
+        fmt.Println("builder/dockerfile/dispatchers.go  startFirstContainerCreate() id :", id)
+    }
+
+    return id, nil
+}
+
+
+func (b *Builder) startFirstContainerExecStart(execName string) error {
+
+	execStartCheck := &types.ExecStartCheck{}
+
+    fmt.Println("builder/dockerfile/dispatchers.go   startFirstContainerExecStart() : ", execName)
+	if exists, err := b.docker.FirstContainerExecExists(execName); !exists {
+		return err
+	}
+
+	// Now run the user process in container.
+	// Maybe we should we pass ctx here if we're not detaching?
+    //clientCtx context.Context
+    //Stdout  io.Writer
+    //Stderr  io.Writer
+    //Output  io.Writer
+    if err := b.docker.FirstContainerExecStart(context.Background(), execName, nil, b.Stdout, b.Stderr); err != nil {
+		if execStartCheck.Detach {
+			return err
+		}
+    fmt.Println("builder/dockerfile/dispatchers.go   startFirstContainerExecStart() FirstContainerExecStart() is err!!!")
+
+	}
+
+    fmt.Println("builder/dockerfile/dispatchers.go   startFirstContainerExecStart() FirstContainerExecStart() end")
+	return nil
+}
+
+
+
+
+
+
+
+
+
 
 // CMD foo
 //
 // Set the default command to run in the container (which may be empty).
 // Argument handling is the same as RUN.
 //
-func cmd(b *Builder, args []string, attributes map[string]bool, original string) error {
-	if err := b.flags.Parse(); err != nil {
-		return err
+func cmd(b *Builder, args []string, attributes map[string]bool, original string, tmpCID string, finishedFlag bool) (string, error) {
+    fmt.Println("dockerfile/dispatchers.go cmd() tmpContainerID ", tmpCID)
+	
+    if err := b.flags.Parse(); err != nil {
+		return "", err
 	}
+    fmt.Println("dispatchers.go cmd()")
 
 	cmdSlice := handleJSONArgs(args, attributes)
 
@@ -461,15 +675,15 @@ func cmd(b *Builder, args []string, attributes map[string]bool, original string)
 	// set config as already being escaped, this prevents double escaping on windows
 	b.runConfig.ArgsEscaped = true
 
-	if err := b.commit("", b.runConfig.Cmd, fmt.Sprintf("CMD %q", cmdSlice)); err != nil {
-		return err
+	if _, err := b.commit("", b.runConfig.Cmd, fmt.Sprintf("CMD %q", cmdSlice)); err != nil {
+		return "", err
 	}
 
 	if len(args) != 0 {
 		b.cmdSet = true
 	}
 
-	return nil
+	return "", nil
 }
 
 // parseOptInterval(flag) is the duration of flag.Value, or 0 if
@@ -494,15 +708,19 @@ func parseOptInterval(f *Flag) (time.Duration, error) {
 // Set the default healthcheck command to run in the container (which may be empty).
 // Argument handling is the same as RUN.
 //
-func healthcheck(b *Builder, args []string, attributes map[string]bool, original string) error {
-	if len(args) == 0 {
-		return errAtLeastOneArgument("HEALTHCHECK")
+func healthcheck(b *Builder, args []string, attributes map[string]bool, original string, tmpCID string, finishedFlag bool) (string, error) {
+    fmt.Println("dockerfile/dispatchers.go healthcheck() tmpContainerID ", tmpCID)
+
+    if len(args) == 0 {
+		return "", errAtLeastOneArgument("HEALTHCHECK")
 	}
+    fmt.Println("dispatchers.go  healthcheck()")
+
 	typ := strings.ToUpper(args[0])
 	args = args[1:]
 	if typ == "NONE" {
 		if len(args) != 0 {
-			return fmt.Errorf("HEALTHCHECK NONE takes no arguments")
+			return "", fmt.Errorf("HEALTHCHECK NONE takes no arguments")
 		}
 		test := strslice.StrSlice{typ}
 		b.runConfig.Healthcheck = &container.HealthConfig{
@@ -523,14 +741,14 @@ func healthcheck(b *Builder, args []string, attributes map[string]bool, original
 		flRetries := b.flags.AddString("retries", "")
 
 		if err := b.flags.Parse(); err != nil {
-			return err
+			return "", err
 		}
 
 		switch typ {
 		case "CMD":
 			cmdSlice := handleJSONArgs(args, attributes)
 			if len(cmdSlice) == 0 {
-				return fmt.Errorf("Missing command after HEALTHCHECK CMD")
+				return "", fmt.Errorf("Missing command after HEALTHCHECK CMD")
 			}
 
 			if !attributes["json"] {
@@ -539,28 +757,28 @@ func healthcheck(b *Builder, args []string, attributes map[string]bool, original
 
 			healthcheck.Test = strslice.StrSlice(append([]string{typ}, cmdSlice...))
 		default:
-			return fmt.Errorf("Unknown type %#v in HEALTHCHECK (try CMD)", typ)
+			return "", fmt.Errorf("Unknown type %#v in HEALTHCHECK (try CMD)", typ)
 		}
 
 		interval, err := parseOptInterval(flInterval)
 		if err != nil {
-			return err
+			return "", err
 		}
 		healthcheck.Interval = interval
 
 		timeout, err := parseOptInterval(flTimeout)
 		if err != nil {
-			return err
+			return "", err
 		}
 		healthcheck.Timeout = timeout
 
 		if flRetries.Value != "" {
 			retries, err := strconv.ParseInt(flRetries.Value, 10, 32)
 			if err != nil {
-				return err
+				return "", err
 			}
 			if retries < 1 {
-				return fmt.Errorf("--retries must be at least 1 (not %d)", retries)
+				return "", fmt.Errorf("--retries must be at least 1 (not %d)", retries)
 			}
 			healthcheck.Retries = int(retries)
 		} else {
@@ -581,10 +799,13 @@ func healthcheck(b *Builder, args []string, attributes map[string]bool, original
 // Handles command processing similar to CMD and RUN, only b.runConfig.Entrypoint
 // is initialized at NewBuilder time instead of through argument parsing.
 //
-func entrypoint(b *Builder, args []string, attributes map[string]bool, original string) error {
+func entrypoint(b *Builder, args []string, attributes map[string]bool, original string, tmpCID string, finishedFlag bool) (string, error) {
+    fmt.Println("dockerfile/dispatchers.go entrypoint() tmpContainerID ", tmpCID)
+
 	if err := b.flags.Parse(); err != nil {
-		return err
+		return "", err
 	}
+    fmt.Println("dispatchers.go  entrypoint()")
 
 	parsed := handleJSONArgs(args, attributes)
 
@@ -606,11 +827,11 @@ func entrypoint(b *Builder, args []string, attributes map[string]bool, original 
 		b.runConfig.Cmd = nil
 	}
 
-	if err := b.commit("", b.runConfig.Cmd, fmt.Sprintf("ENTRYPOINT %q", b.runConfig.Entrypoint)); err != nil {
-		return err
+	if _, err := b.commit("", b.runConfig.Cmd, fmt.Sprintf("ENTRYPOINT %q", b.runConfig.Entrypoint)); err != nil {
+		return "", err
 	}
 
-	return nil
+	return "", nil
 }
 
 // EXPOSE 6667/tcp 7000/tcp
@@ -618,15 +839,19 @@ func entrypoint(b *Builder, args []string, attributes map[string]bool, original 
 // Expose ports for links and port mappings. This all ends up in
 // b.runConfig.ExposedPorts for runconfig.
 //
-func expose(b *Builder, args []string, attributes map[string]bool, original string) error {
+func expose(b *Builder, args []string, attributes map[string]bool, original string, tmpCID string, finishedFlag bool) (string, error) {
+    fmt.Println("dockerfile/dispatchers.go expose() tmpContainerID ", tmpCID)
+
 	portsTab := args
 
+    fmt.Println("dispatchers.go  expose()")
+
 	if len(args) == 0 {
-		return errAtLeastOneArgument("EXPOSE")
+		return "", errAtLeastOneArgument("EXPOSE")
 	}
 
 	if err := b.flags.Parse(); err != nil {
-		return err
+		return "", err
 	}
 
 	if b.runConfig.ExposedPorts == nil {
@@ -635,7 +860,7 @@ func expose(b *Builder, args []string, attributes map[string]bool, original stri
 
 	ports, _, err := nat.ParsePortSpecs(portsTab)
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	// instead of using ports directly, we build a list of ports and sort it so
@@ -659,13 +884,16 @@ func expose(b *Builder, args []string, attributes map[string]bool, original stri
 // Set the user to 'foo' for future commands and when running the
 // ENTRYPOINT/CMD at container run time.
 //
-func user(b *Builder, args []string, attributes map[string]bool, original string) error {
+func user(b *Builder, args []string, attributes map[string]bool, original string, tmpCID string, finishedFlag bool) (string, error) {
+    fmt.Println("dockerfile/dispatchers.go user() tmpContainerID ", tmpCID)
+
 	if len(args) != 1 {
-		return errExactlyOneArgument("USER")
+		return "", errExactlyOneArgument("USER")
 	}
+    fmt.Println("dispatchers.go user()")
 
 	if err := b.flags.Parse(); err != nil {
-		return err
+		return "", err
 	}
 
 	b.runConfig.User = args[0]
@@ -676,13 +904,16 @@ func user(b *Builder, args []string, attributes map[string]bool, original string
 //
 // Expose the volume /foo for use. Will also accept the JSON array form.
 //
-func volume(b *Builder, args []string, attributes map[string]bool, original string) error {
+func volume(b *Builder, args []string, attributes map[string]bool, original string, tmpCID string, finishedFlag bool) (string, error) {
+    fmt.Println("dockerfile/dispatchers.go volume() tmpContainerID ", tmpCID)
+
 	if len(args) == 0 {
-		return errAtLeastOneArgument("VOLUME")
+		return "", errAtLeastOneArgument("VOLUME")
 	}
+    fmt.Println("dispatchers.go volume()")
 
 	if err := b.flags.Parse(); err != nil {
-		return err
+		return "", err
 	}
 
 	if b.runConfig.Volumes == nil {
@@ -691,28 +922,31 @@ func volume(b *Builder, args []string, attributes map[string]bool, original stri
 	for _, v := range args {
 		v = strings.TrimSpace(v)
 		if v == "" {
-			return fmt.Errorf("VOLUME specified can not be an empty string")
+			return "", fmt.Errorf("VOLUME specified can not be an empty string")
 		}
 		b.runConfig.Volumes[v] = struct{}{}
 	}
-	if err := b.commit("", b.runConfig.Cmd, fmt.Sprintf("VOLUME %v", args)); err != nil {
-		return err
+	if _, err := b.commit("", b.runConfig.Cmd, fmt.Sprintf("VOLUME %v", args)); err != nil {
+		return "", err
 	}
-	return nil
+	return "", nil
 }
 
 // STOPSIGNAL signal
 //
 // Set the signal that will be used to kill the container.
-func stopSignal(b *Builder, args []string, attributes map[string]bool, original string) error {
-	if len(args) != 1 {
-		return errExactlyOneArgument("STOPSIGNAL")
+func stopSignal(b *Builder, args []string, attributes map[string]bool, original string, tmpCID string, finishedFlag bool) (string, error) {
+    fmt.Println("dockerfile/dispatchers.go stopsignal() tmpContainerID ", tmpCID)
+	
+    if len(args) != 1 {
+		return "", errExactlyOneArgument("STOPSIGNAL")
 	}
+    fmt.Println("dispatchers.go stopSsignal()")
 
 	sig := args[0]
 	_, err := signal.ParseSignal(sig)
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	b.runConfig.StopSignal = sig
@@ -724,10 +958,13 @@ func stopSignal(b *Builder, args []string, attributes map[string]bool, original 
 // Adds the variable foo to the trusted list of variables that can be passed
 // to builder using the --build-arg flag for expansion/subsitution or passing to 'run'.
 // Dockerfile author may optionally set a default value of this variable.
-func arg(b *Builder, args []string, attributes map[string]bool, original string) error {
+func arg(b *Builder, args []string, attributes map[string]bool, original string, tmpCID string, finishedFlag bool) (string, error) {
+    fmt.Println("dockerfile/dispatchers.go arg() tmpContainerID ", tmpCID)
+
 	if len(args) != 1 {
-		return errExactlyOneArgument("ARG")
+		return "", errExactlyOneArgument("ARG")
 	}
+    fmt.Println("dispatchers.go arg()")
 
 	var (
 		name       string
@@ -744,7 +981,7 @@ func arg(b *Builder, args []string, attributes map[string]bool, original string)
 	if strings.Contains(arg, "=") {
 		parts := strings.SplitN(arg, "=", 2)
 		if len(parts[0]) == 0 {
-			return errBlankCommandNames("ARG")
+			return "", errBlankCommandNames("ARG")
 		}
 
 		name = parts[0]
@@ -773,21 +1010,23 @@ func arg(b *Builder, args []string, attributes map[string]bool, original string)
 // SHELL powershell -command
 //
 // Set the non-default shell to use.
-func shell(b *Builder, args []string, attributes map[string]bool, original string) error {
+func shell(b *Builder, args []string, attributes map[string]bool, original string, tmpCID string, finishedFlag bool) (string, error) {
+    fmt.Println("dockerfile/dispatchers.go shell() tmpContainerID ", tmpCID)
+
 	if err := b.flags.Parse(); err != nil {
-		return err
+		return "", err
 	}
 	shellSlice := handleJSONArgs(args, attributes)
 	switch {
 	case len(shellSlice) == 0:
 		// SHELL []
-		return errAtLeastOneArgument("SHELL")
+		return "", errAtLeastOneArgument("SHELL")
 	case attributes["json"]:
 		// SHELL ["powershell", "-command"]
 		b.runConfig.Shell = strslice.StrSlice(shellSlice)
 	default:
 		// SHELL powershell -command - not JSON
-		return errNotJSON("SHELL", original)
+		return "", errNotJSON("SHELL", original)
 	}
 	return b.commit("", b.runConfig.Cmd, fmt.Sprintf("SHELL %v", shellSlice))
 }

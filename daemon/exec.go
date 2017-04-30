@@ -94,7 +94,10 @@ func (d *Daemon) getActiveContainer(name string) (*container.Container, error) {
 
 // ContainerExecCreate sets up an exec in a running container.
 func (d *Daemon) ContainerExecCreate(name string, config *types.ExecConfig) (string, error) {
-	container, err := d.getActiveContainer(name)
+
+    fmt.Println("daemon/exec.go  ContainerExecCreate()")
+
+    container, err := d.getActiveContainer(name)
 	if err != nil {
 		return "", err
 	}
@@ -143,6 +146,9 @@ func (d *Daemon) ContainerExecCreate(name string, config *types.ExecConfig) (str
 // std streams are set up.
 // If ctx is cancelled, the process is terminated.
 func (d *Daemon) ContainerExecStart(ctx context.Context, name string, stdin io.ReadCloser, stdout io.Writer, stderr io.Writer) (err error) {
+
+    fmt.Println("daemon/exec.go/ContainerExecStart() exec")
+
 	var (
 		cStdin           io.ReadCloser
 		cStdout, cStderr io.Writer
@@ -212,6 +218,8 @@ func (d *Daemon) ContainerExecStart(ctx context.Context, name string, stdin io.R
 
 	attachErr := container.AttachStreams(ctx, ec.StreamConfig, ec.OpenStdin, true, ec.Tty, cStdin, cStdout, cStderr, ec.DetachKeys)
 
+    fmt.Println("daemon/exec.go  AddProcess")
+    fmt.Println("daemon/exec.go  AddProcess  container : ", c.ID)
 	systemPid, err := d.containerd.AddProcess(ctx, c.ID, name, p, ec.InitializeStdio)
 	if err != nil {
 		return err
@@ -223,16 +231,20 @@ func (d *Daemon) ContainerExecStart(ctx context.Context, name string, stdin io.R
 	select {
 	case <-ctx.Done():
 		logrus.Debugf("Sending TERM signal to process %v in container %v", name, c.ID)
-		d.containerd.SignalProcess(c.ID, name, int(signal.SignalMap["TERM"]))
+		fmt.Println("daemon/exec.go ContainerExecStart() sending TERM signal")
+        d.containerd.SignalProcess(c.ID, name, int(signal.SignalMap["TERM"]))
 		select {
 		case <-time.After(termProcessTimeout * time.Second):
 			logrus.Infof("Container %v, process %v failed to exit within %d seconds of signal TERM - using the force", c.ID, name, termProcessTimeout)
 			d.containerd.SignalProcess(c.ID, name, int(signal.SignalMap["KILL"]))
+            fmt.Println("daemon/exec.go ContainerExecStart()  failed to exit ", termProcessTimeout)
 		case <-attachErr:
 			// TERM signal worked
+            fmt.Println("daemon/exec.go  ContainerExecStart() TERM signal worked")
 		}
 		return fmt.Errorf("context cancelled")
 	case err := <-attachErr:
+        fmt.Println("daemon/exec.go ContainerExecStart() attachErr")
 		if err != nil {
 			if _, ok := err.(container.DetachError); !ok {
 				return fmt.Errorf("exec attach failed with error: %v", err)

@@ -217,7 +217,9 @@ type Cmd struct {
 
 // RunCmd runs a command and returns a Result
 func RunCmd(cmd Cmd) *Result {
-	result := StartCmd(cmd)
+	
+    fmt.Println("pkg/command.go  RunCmd ") 
+    result := StartCmd(cmd)
 	if result.Error != nil {
 		return result
 	}

@@ -93,6 +93,7 @@ func showVersion() {
 }
 
 func main() {
+    //fmt.Println("cmd/dockerd/docker.go  main() dockerd")
 	if reexec.Init() {
 		return
 	}
@@ -107,4 +108,5 @@ func main() {
 		fmt.Fprintf(stderr, "%s\n", err)
 		os.Exit(1)
 	}
+    //fmt.Println("cmd/dockerd/docker.go  main() dockerd end")
 }

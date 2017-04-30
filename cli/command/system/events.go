@@ -51,6 +51,7 @@ func NewEventsCommand(dockerCli *command.DockerCli) *cobra.Command {
 }
 
 func runEvents(dockerCli *command.DockerCli, opts *eventsOptions) error {
+    fmt.Println("cli/command/system/events.go  runEvent()")
 	tmpl, err := makeTemplate(opts.format)
 	if err != nil {
 		return cli.StatusError{

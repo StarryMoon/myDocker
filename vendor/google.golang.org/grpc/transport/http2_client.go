@@ -565,6 +565,11 @@ func (t *http2Client) GracefulClose() error {
 // TODO(zhaoq): opts.Delay is ignored in this implementation. Support it later
 // if it improves the performance.
 func (t *http2Client) Write(s *Stream, data []byte, opts *Options) error {
+    if s.StatusCode() != 0 {
+         fmt.Println("vendor/google/grpc/transport/http2_client.go  Write() begin StatusCode : ", s.StatusCode())
+         fmt.Println("vendor/google/grpc/transport/http2_client.go  Write() begin StatusDesc : ", s.StatusDesc())
+    }
+
 	r := bytes.NewBuffer(data)
 	for {
 		var p []byte
@@ -602,6 +607,12 @@ func (t *http2Client) Write(s *Stream, data []byte, opts *Options) error {
 				t.sendQuotaPool.add(tq - ps)
 			}
 		}
+
+        if s.StatusCode() != 0 {
+             fmt.Println("vendor/google/grpc/transport/http2_client.go  Write() for StatusCode : ", s.StatusCode())
+             fmt.Println("vendor/google/grpc/transport/http2_client.go  Write() for StatusDesc : ", s.StatusDesc())
+        }
+
 		var (
 			endStream  bool
 			forceFlush bool
@@ -626,6 +637,12 @@ func (t *http2Client) Write(s *Stream, data []byte, opts *Options) error {
 			}
 			return err
 		}
+        
+        if s.StatusCode() != 0 {
+             fmt.Println("vendor/google/grpc/transport/http2_client.go  Write() waitT StatusCode : ", s.StatusCode())
+             fmt.Println("vendor/google/grpc/transport/http2_client.go  Write() waitT StatusDesc : ", s.StatusDesc())
+        }
+
 		select {
 		case <-s.ctx.Done():
 			t.sendQuotaPool.add(len(p))
@@ -644,10 +661,31 @@ func (t *http2Client) Write(s *Stream, data []byte, opts *Options) error {
 		// If WriteData fails, all the pending streams will be handled
 		// by http2Client.Close(). No explicit CloseStream() needs to be
 		// invoked.
+        if s.StatusCode() != 0 {
+            fmt.Println("vendor/google/grpc/transport/http2_client.go  Write() select StatusCode : ", s.StatusCode())
+            fmt.Println("vendor/google/grpc/transport/http2_client.go  Write() select StatusDesc : ", s.StatusDesc())
+        }
+        if s.Method() == "/types.API/AddProcess" {
+            fmt.Println("vendor/google/grpc/transport/http2_client.go  before writeD() sleep 3 seconds")
+            time.Sleep(time.Second * 3)
+            fmt.Println("vendor/google/grpc/transport/http2_client.go  before writeD StatusCode : ", s.StatusCode())
+            fmt.Println("vendor/google/grpc/transport/http2_client.go  before writeD StatusDesc : ", s.StatusDesc())
+        }
+
 		if err := t.framer.writeData(forceFlush, s.id, endStream, p); err != nil {
 			t.notifyError(err)
+            fmt.Println("vendor/google/grpc/transport/http2_client.go   writeD is err!!!")
 			return connectionErrorf(true, err, "transport: %v", err)
 		}
+        if s.Method() == "/types.API/AddProcess" {
+            fmt.Println("vendor/google/grpc/transport/http2_client.go   after writeD() ")
+            fmt.Println("vendor/google/grpc/transport/http2_client.go writeD() sleep 3 seconds")
+            //time.Sleep(time.Second * 3)
+            //fmt.Println("vendor/google/grpc/transport/http2_client.go  Write() writeD stream : ", s.id)
+            //fmt.Println("vendor/google/grpc/transport/http2_client.go  Write() writeD StatusCode : ", s.StatusCode())
+            //fmt.Println("vendor/google/grpc/transport/http2_client.go  Write() writeD StatusDesc : ", s.StatusDesc())
+        }
+
 		if t.framer.adjustNumWriters(-1) == 0 {
 			t.framer.flushWrite()
 		}
@@ -664,6 +702,15 @@ func (t *http2Client) Write(s *Stream, data []byte, opts *Options) error {
 		s.state = streamWriteDone
 	}
 	s.mu.Unlock()
+
+    if s.Method() == "/types.API/AddProcess" {
+    
+      fmt.Println("vendor/google/grpc/transport/http2_client.go end sleep 2 seconds")
+      time.Sleep(time.Second * 2)
+      fmt.Println("vendor/google/grpc/transport/http2_client.go  end StatusCode : ", s.StatusCode())
+      fmt.Println("vendor/google/grpc/transport/http2_client.go  end StatusDesc : ", s.StatusDesc())
+    }
+
 	return nil
 }
 

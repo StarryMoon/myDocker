@@ -76,6 +76,7 @@ func (e containerNotFoundError) NotFound() bool {
 
 // Error returns a string representation of a containerNotFoundError
 func (e containerNotFoundError) Error() string {
+    fmt.Println("client/errors.go  Error()")
 	return fmt.Sprintf("Error: No such container: %s", e.containerID)
 }
 

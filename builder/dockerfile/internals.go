@@ -17,6 +17,8 @@ import (
 	"sort"
 	"strings"
 	"time"
+    
+//    containerd "github.com/docker/containerd/api/grpc/types"
 
 	"github.com/Sirupsen/logrus"
 	"github.com/docker/docker/api/types"
@@ -38,12 +40,15 @@ import (
 	"github.com/docker/docker/runconfig/opts"
 )
 
-func (b *Builder) commit(id string, autoCmd strslice.StrSlice, comment string) error {
-	if b.disableCommit {
-		return nil
+func (b *Builder) commit(id string, autoCmd strslice.StrSlice, comment string,) (string, error) {
+
+    fmt.Println("dockerfile/internals.go commit()")
+
+    if b.disableCommit {
+		return "", nil
 	}
 	if b.image == "" && !b.noBaseImage {
-		return fmt.Errorf("Please provide a source image with `from` prior to commit")
+		return "", fmt.Errorf("Please provide a source image with `from` prior to commit")
 	}
 	b.runConfig.Image = b.image
 
@@ -55,17 +60,16 @@ func (b *Builder) commit(id string, autoCmd strslice.StrSlice, comment string) e
 
 		hit, err := b.probeCache()
 		if err != nil {
-			return err
+			return "", err
 		} else if hit {
-			return nil
+			return "", nil
 		}
 		id, err = b.create()
 		if err != nil {
-			return err
+			return "", err
 		}
 	}
 
-    fmt.Println("internals.go commit")
 
 	// Note: Actually copy the struct
 	autoConfig := *b.runConfig
@@ -82,11 +86,11 @@ func (b *Builder) commit(id string, autoCmd strslice.StrSlice, comment string) e
 	// Commit the container
 	imageID, err := b.docker.Commit(id, commitCfg)
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	b.image = imageID
-	return nil
+	return "", nil
 }
 
 type copyInfo struct {
@@ -94,14 +98,16 @@ type copyInfo struct {
 	decompress bool
 }
 
-func (b *Builder) runContextCommand(args []string, allowRemote bool, allowLocalDecompression bool, cmdName string) error {
+func (b *Builder) runContextCommand(args []string, allowRemote bool, allowLocalDecompression bool, cmdName string) (string, error) {
 	if b.context == nil {
-		return fmt.Errorf("No context given. Impossible to use %s", cmdName)
+		return "", fmt.Errorf("No context given. Impossible to use %s", cmdName)
 	}
 
 	if len(args) < 2 {
-		return fmt.Errorf("Invalid %s format - at least two arguments required", cmdName)
+		return "", fmt.Errorf("Invalid %s format - at least two arguments required", cmdName)
 	}
+
+    fmt.Println("internals.go runContextCommand()")
 
 	// Work in daemon-specific filepath semantics
 	dest := filepath.FromSlash(args[len(args)-1]) // last one is always the dest
@@ -119,11 +125,11 @@ func (b *Builder) runContextCommand(args []string, allowRemote bool, allowLocalD
 		decompress := allowLocalDecompression
 		if urlutil.IsURL(orig) {
 			if !allowRemote {
-				return fmt.Errorf("Source can't be a URL for %s", cmdName)
+				return "", fmt.Errorf("Source can't be a URL for %s", cmdName)
 			}
 			fi, err = b.download(orig)
 			if err != nil {
-				return err
+				return "", err
 			}
 			defer os.RemoveAll(filepath.Dir(fi.Path()))
 			decompress = false
@@ -133,17 +139,17 @@ func (b *Builder) runContextCommand(args []string, allowRemote bool, allowLocalD
 		// not a URL
 		subInfos, err := b.calcCopyInfo(cmdName, orig, allowLocalDecompression, true)
 		if err != nil {
-			return err
+			return "", err
 		}
 
 		infos = append(infos, subInfos...)
 	}
 
 	if len(infos) == 0 {
-		return fmt.Errorf("No source files were specified")
+		return "", fmt.Errorf("No source files were specified")
 	}
 	if len(infos) > 1 && !strings.HasSuffix(dest, string(os.PathSeparator)) {
-		return fmt.Errorf("When using %s with more than one source file, the destination must be a directory and end with a /", cmdName)
+		return "", fmt.Errorf("When using %s with more than one source file, the destination must be a directory and end with a /", cmdName)
 	}
 
 	// For backwards compat, if there's just one info then use it as the
@@ -178,14 +184,14 @@ func (b *Builder) runContextCommand(args []string, allowRemote bool, allowLocalD
 	defer func(cmd strslice.StrSlice) { b.runConfig.Cmd = cmd }(cmd)
 
 	if hit, err := b.probeCache(); err != nil {
-		return err
+		return "", err
 	} else if hit {
-		return nil
+		return "", nil
 	}
 
 	container, err := b.docker.ContainerCreate(types.ContainerCreateConfig{Config: b.runConfig})
 	if err != nil {
-		return err
+		return "", err
 	}
 	b.tmpContainers[container.ID] = struct{}{}
 
@@ -194,12 +200,12 @@ func (b *Builder) runContextCommand(args []string, allowRemote bool, allowLocalD
 	// Twiddle the destination when its a relative path - meaning, make it
 	// relative to the WORKINGDIR
 	if dest, err = normaliseDest(cmdName, b.runConfig.WorkingDir, dest); err != nil {
-		return err
+		return "", err
 	}
 
 	for _, info := range infos {
 		if err := b.docker.CopyOnBuild(container.ID, dest, info.FileInfo, info.decompress); err != nil {
-			return err
+			return "", err
 		}
 	}
 
@@ -377,14 +383,18 @@ func (b *Builder) calcCopyInfo(cmdName, origPath string, allowLocalDecompression
 	return copyInfos, nil
 }
 
-func (b *Builder) processImageFrom(img builder.Image) error {
+func (b *Builder) processImageFrom(img builder.Image) (string, error) {
 	if img != nil {
+    fmt.Println("internals.go processImageFrom  image!=nil")
 		b.image = img.ImageID()
 
 		if img.RunConfig() != nil {
 			b.runConfig = img.RunConfig()
+    fmt.Println("internals.go processImageFrom  img.RunConfig!=nil ", b.runConfig.Image)        
 		}
 	}
+
+    fmt.Println("internals.go  processImageFrom()")
 
 	// Check to see if we have a default PATH, note that windows won't
 	// have one as its set by HCS
@@ -401,7 +411,7 @@ func (b *Builder) processImageFrom(img builder.Image) error {
 
 	if img == nil {
 		// Typically this means they used "FROM scratch"
-		return nil
+		return "", nil
 	}
 
 	// Process ONBUILD triggers if they exist
@@ -421,24 +431,165 @@ func (b *Builder) processImageFrom(img builder.Image) error {
 	for _, step := range onBuildTriggers {
 		ast, err := parser.Parse(strings.NewReader(step), &b.directive)
 		if err != nil {
-			return err
+			return "", err
 		}
 
 		total := len(ast.Children)
 		for _, n := range ast.Children {
 			if err := b.checkDispatch(n, true); err != nil {
-				return err
+				return "", err
 			}
 		}
 		for i, n := range ast.Children {
-			if err := b.dispatch(i, total, n); err != nil {
-				return err
+			if _, err := b.dispatch(i, total, n, ""); err != nil {
+				return "", err
 			}
 		}
 	}
 
+   
+    //start the base image
+
+    fmt.Println("internals.go/processImageFrom  start the base image ")
+    fmt.Println("internals.go/processImageFrom  start the base image ", b.image)
+    fmt.Println("internals.go/processImageFrom  start the base image ", b.runConfig.Image)
+    fmt.Println("internals.go/processImageFrom  start the base image ", b.runConfig.Cmd)
+    fmt.Println("internals.go/processImageFrom  start the base image ", b.runConfig.Env)
+    fmt.Println("internals.go/processImageFrom  start the base image ", b.runConfig.ArgsEscaped)
+    
+//    b.runConfig.Image = b.image
+//    bContainerID, err := b.create()
+//    fmt.Println("start the base image : %v", bContainerID)
+//    if err != nil {
+//        return "", err
+//    }
+
+    
+    fmt.Println("internals.go/processImageFrom  before run the base image ", b.noBaseImage)
+
+//    if err := b.run(bContainerID);err != nil {
+//        return "", err
+//    }
+
+//    b.startFirstContainer(bContainerID)
+
+//    return bContainerID, nil
+	return "", nil
+}
+
+func (b *Builder) startFirstContainer(id string) error {
+    fmt.Println("internals.go startFirstContainer() ", id)
+    return b.docker.GetFirstContainerStatus(id) 
+}
+
+
+/*
+
+type ExecConfig struct {
+	User         string   // User that will run the command
+	Privileged   bool     // Is the container in privileged mode
+	Tty          bool     // Attach standard streams to a tty.
+	AttachStdin  bool     // Attach the standard input, makes possible user interaction
+	AttachStderr bool     // Attach the standard error
+	AttachStdout bool     // Attach the standard output
+	Detach       bool     // Execute in detach mode
+	DetachKeys   string   // Escape keys for detach
+	Env          []string // Environment variables
+	Cmd          []string // Execution commands and args
+}
+
+*/
+
+/*
+//name     container 
+//config   exec 
+func (b *Builder) firstContainerExecCreate(name string, execConfig *types.ExecConfig) error {
+    fmt.Println("builder/dockerfile/internals.go   firstContainerExecCreate()")
+
+	if len(execConfig.Cmd) == 0 {
+		return fmt.Errorf("No exec command specified")
+	}
+
+    fmt.Println("builder/dockerfile/internals.go  firstContainerExecCreate() : ", execConfig.Cmd)
+
+	id, err := b.docker.ContainerExecCreate(name, config)
+	if err != nil {
+		fmt.Println("builder/dockerfile/internals.go  firstContainerExecCreate()  err!=nil")
+        return "", err
+	}
+
+    return nil
+}
+*/
+
+
+
+/*
+func (b *Builder) firstContainerExecStart(ctx context.Context, vars map[string]string) error {
+
+	var (
+		execName                  = vars["name"]
+		stdin, inStream           io.ReadCloser
+		stdout, stderr, outStream io.Writer
+	)
+
+	execStartCheck := &types.ExecStartCheck{}
+	if err := json.NewDecoder(r.Body).Decode(execStartCheck); err != nil {
+		return err
+	}
+
+    fmt.Println("builder/dockerfile/internals.go   firstContainerExecStart() : ", execName)
+	if exists, err := s.backend.ExecExists(execName); !exists {
+		return err
+	}
+
+	// Now run the user process in container.
+	// Maybe we should we pass ctx here if we're not detaching?
+    fmt.Println("api/server/router/container/exec.go   postContainerExecStart() ")
+	
+    if err := b.docker.ContainerExecStart(context.Background(), execName, stdin, stdout, stderr); err != nil {
+		if execStartCheck.Detach {
+			return err
+		}
+	}
+
+    fmt.Println("builder/dockerfile/internals.go  firstContainerExecStart() ContainerExecStart()")
 	return nil
 }
+
+
+//func (daemon *Daemon) GetFirstContainerStatus(id string) error {
+    container, err := daemon.GetContainer(id)
+    if err != nil {
+       return err
+    }
+    fmt.Println("internals.go getFirstContainer() ", container.ImageID)
+    return nil
+}
+
+
+func (b *Builder) startFirstContainer() error {
+     if b.disableCommit {
+         return nil
+     }
+     if b.image == "" && !b.noBaseImage {
+         return fmt.Errorf("Please provide a image ")
+     }
+     b.runConfig.Image = b.image
+
+     id, err = b.create()
+     if err != nil {
+          return err
+     }
+}
+
+func firstContainerExecCmd() error {
+
+}
+
+*/
+
+
 
 // probeCache checks if cache match can be found for current build instruction.
 // If an image is found, probeCache returns `(true, nil)`.
@@ -471,6 +622,8 @@ func (b *Builder) create() (string, error) {
 		return "", fmt.Errorf("Please provide a source image with `from` prior to run")
 	}
 	b.runConfig.Image = b.image
+
+    fmt.Println("internals.go create() ")
 
 	resources := container.Resources{
 		CgroupParent: b.options.CgroupParent,
@@ -508,7 +661,7 @@ func (b *Builder) create() (string, error) {
 	}
 
 	b.tmpContainers[c.ID] = struct{}{}
-	fmt.Fprintf(b.Stdout, " ---> Running in %s\n", stringid.TruncateID(c.ID))
+	fmt.Fprintf(b.Stdout, " ---> Running in %s   internals.go/create()\n", stringid.TruncateID(c.ID))
 
 	// override the entry point that may have been picked up from the base image
 	if err := b.docker.ContainerUpdateCmdOnBuild(c.ID, config.Cmd); err != nil {
@@ -521,6 +674,7 @@ func (b *Builder) create() (string, error) {
 var errCancelled = errors.New("build cancelled")
 
 func (b *Builder) run(cID string) (err error) {
+    fmt.Println("dockerfile/dispatchers.go  run()")
 	errCh := make(chan error)
 	go func() {
 		errCh <- b.docker.ContainerAttachRaw(cID, nil, b.Stdout, b.Stderr, true)
@@ -540,6 +694,9 @@ func (b *Builder) run(cID string) (err error) {
 		}
 	}()
 
+
+    fmt.Println("internals.go run before ContainerStart")
+
 	if err := b.docker.ContainerStart(cID, nil, "", ""); err != nil {
 		close(finished)
 		if cancelErr := <-cancelErrCh; cancelErr != nil {
@@ -549,22 +706,27 @@ func (b *Builder) run(cID string) (err error) {
 		return err
 	}
 
-    fmt.Println("internals.go run ContainerStart")
+    fmt.Println("builder/dockerfile/internals.go run after ContainerStart")
+
+    fmt.Println("builder/dockerfile/internals.go run begin to receive finished event!!!")
+
 
 	// Block on reading output from container, stop on err or chan closed
-	if err := <-errCh; err != nil {
+/*	if err := <-errCh; err != nil {
+        fmt.Println("internals.go ContainerStart err!=nil before close")
 		close(finished)
+        fmt.Println("internals.go ContainerStart err!=nil after close")
 		if cancelErr := <-cancelErrCh; cancelErr != nil {
 			logrus.Debugf("Build cancelled (%v) and got an error from errCh: %v",
 				cancelErr, err)
+            fmt.Println("internals.go/run() got an error from errCh")
 		}
 		return err
 	}
-
-    fmt.Println("internals.go run before ContainerWait")
-	
-    
-    if ret, _ := b.docker.ContainerWait(cID, -1); ret != 0 {
+*/
+   
+/*    ret, _ := b.docker.ContainerWait(cID, -1)
+    if ret != 0 {
 		close(finished)
 		if cancelErr := <-cancelErrCh; cancelErr != nil {
 			logrus.Debugf("Build cancelled (%v) and got a non-zero code from ContainerWait: %d",
@@ -576,9 +738,111 @@ func (b *Builder) run(cID string) (err error) {
 			Code:    ret,
 		}
 	}
+*/   
+    fmt.Println("dockerfile/internals.go run() remove the ContainerWait()")
+    b.docker.GetFirstContainerStatus(cID)
+
 	close(finished)
 	return <-cancelErrCh
 }
+
+
+
+func (b *Builder) stopContainerBeforeCommit(cID string) (err error) {
+    fmt.Println("dockerfile/internals.go  stopContainerBeforeCommit()")
+    
+    fmt.Println("dockerfile/internals.go  stopContainerBeforeCommit() set false to building status!")    
+    if err := b.docker.SetFirstContainerBuildingStatus(cID, false); err != nil {
+        fmt.Println("dockerfile/internals.go  stopContainerBeforeCommit() set building status is err!!!")
+        return err 
+    }
+/*
+    e := &containerd.Event{
+         Type:      "exit",
+         Id:        cID,
+         Status:    "",
+         Pid:       "init",
+         Timestamp  time.Now().UnixNano()
+    }
+
+    container, err := b.docker.GetFirstContainer(cID)
+    if err != nil {
+        return err
+    }
+    if err := container.handleEvent(e); err != nil {
+        fmt.Println("dockerfile/internals.go  stopContainerBeforeCommit() handleEvent is err!!!")
+    }
+*/
+
+    if err := b.docker.TriggerExitEvent(cID); err != nil {
+        fmt.Println("dockerfile/internals.go  stopContainerBeforeCommit() triggger exit event  err!!!")
+        return err
+    }
+    fmt.Println("dockerfile/internals.go  stopContainerBeforeCommit() triggger exit event  success!!!")
+
+
+    errCh := make(chan error)
+	go func() {
+		errCh <- b.docker.ContainerAttachRaw(cID, nil, b.Stdout, b.Stderr, true)
+	}()
+
+	finished := make(chan struct{})
+	cancelErrCh := make(chan error, 1)
+	go func() {
+		select {
+		case <-b.clientCtx.Done():
+			logrus.Debugln("Build cancelled, killing and removing container:", cID)
+			b.docker.ContainerKill(cID, 0)
+			b.removeContainer(cID)
+			cancelErrCh <- errCancelled
+		case <-finished:
+			cancelErrCh <- nil
+		}
+	}()
+
+    fmt.Println("dockerfile/internals.go stopContainerBeforeCommit() receive finished event!!!")
+
+	// Block on reading output from container, stop on err or chan closed
+	errChannel := <-errCh
+    fmt.Println("dockerfile/internals.go stopContainerBeforeCommit() channel message : ", errChannel)
+    if errChannel != nil {
+        fmt.Println("internals.go ContainerStart err!=nil before close")
+		close(finished)
+        fmt.Println("internals.go ContainerStart err!=nil after close")
+		if cancelErr := <-cancelErrCh; cancelErr != nil {
+			logrus.Debugf("Build cancelled (%v) and got an error from errCh: %v",
+				cancelErr, err)
+            fmt.Println("internals.go/run() got an error from errCh")
+		}
+		return err
+	}
+ 
+   
+    fmt.Println("dockerfile/internals.go stopContainerBeforeCommit() before ContainerWait")
+    ret, _ := b.docker.ContainerWait(cID, -1)
+    if ret != 0 {
+		close(finished)
+		if cancelErr := <-cancelErrCh; cancelErr != nil {
+			logrus.Debugf("Build cancelled (%v) and got a non-zero code from ContainerWait: %d",
+				cancelErr, ret)
+		}
+		// TODO: change error type, because jsonmessage.JSONError assumes HTTP
+		return &jsonmessage.JSONError{
+			Message: fmt.Sprintf("The command '%s' returned a non-zero code: %d", strings.Join(b.runConfig.Cmd, " "), ret),
+			Code:    ret,
+		}
+	}
+   
+    fmt.Println("dockerfile/internals.go stopContainerBeforeCommit() finished ")
+    b.docker.GetFirstContainerStatus(cID)
+    fmt.Println("dockerfile/internals.go  before commit the container is stopped!!!")
+
+	close(finished)
+	return <-cancelErrCh
+}
+
+
+
 
 func (b *Builder) removeContainer(c string) error {
 	rmConfig := &types.ContainerRmConfig{
@@ -598,7 +862,7 @@ func (b *Builder) clearTmp() {
 			return
 		}
 		delete(b.tmpContainers, c)
-		fmt.Fprintf(b.Stdout, "Removing intermediate container %s\n", stringid.TruncateID(c))
+		fmt.Fprintf(b.Stdout, "Removing intermediate container %s internals.go/clearTmp()\n", stringid.TruncateID(c))
 	}
 }
 

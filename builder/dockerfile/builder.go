@@ -221,6 +221,8 @@ func (b *Builder) build(stdout io.Writer, stderr io.Writer, out io.Writer) (stri
 	b.Stderr = stderr
 	b.Output = out
 
+    fmt.Println("dockerfile/builder.go build()")
+
 	// If Dockerfile was not parsed yet, extract it from the Context
 	if b.dockerfile == nil {
 		if err := b.readDockerfile(); err != nil {
@@ -253,7 +255,15 @@ func (b *Builder) build(stdout io.Writer, stderr io.Writer, out io.Writer) (stri
 		}
 	}
 
+    //var tmpFirstComtainerID string
+    tmpFirstContainerID := ""
 	for i, n := range b.dockerfile.Children {
+        fmt.Println("dockerfile/builder.go for()", i)
+        if i >= 1 {
+//           fmt.Println("dockerfile/builder.go  build()  stop the build function!!!")
+//           break
+        }
+
 		select {
 		case <-b.clientCtx.Done():
 			logrus.Debug("Builder: build cancelled!")
@@ -263,17 +273,42 @@ func (b *Builder) build(stdout io.Writer, stderr io.Writer, out io.Writer) (stri
 			// Not cancelled yet, keep going...
 		}
 
-		if err := b.dispatch(i, total, n); err != nil {
+
+/*		if id, err := b.dispatch(i, total, n, tmpFirstContainerID); err != nil {
 			if b.options.ForceRemove {
-				b.clearTmp()
+//				b.clearTmp()
+                fmt.Println("builder.go/build() Don't force remove tmpContainer")
 			}
 			return "", err
-		}
+		}else {
+         tmpFirstContainerID = id
+           if id == "" {
+              id = "nullll"
+           }
+           fmt.Println("dockerfile/evaluator.go dispatches() ", id)
+        }
+*/
+
+		if _, err := b.dispatch(i, total, n, tmpFirstContainerID); err != nil {
+			if b.options.ForceRemove {
+				b.clearTmp()
+                fmt.Println("builder.go/build() Don't force remove tmpContainer")
+			}
+			return "", err
+		}else {
+//         tmpFirstContainerID = id
+//           if id == "" {
+//              id = "nullll"
+//           }
+//           fmt.Println("dockerfile/evaluator.go dispatches() ", id)
+           fmt.Println("dockerfile/evaluator.go dispatches()  completely!")
+         }
 
 		shortImgID = stringid.TruncateID(b.image)
-		fmt.Fprintf(b.Stdout, " ---> %s\n", shortImgID)
+		fmt.Fprintf(b.Stdout, " ---> %s builder.go/build()\n", shortImgID)
 		if b.options.Remove {
 			b.clearTmp()
+            fmt.Println("builder.go/build() Don't remove tmpContainer")
 		}
 	}
 
@@ -312,6 +347,7 @@ func (b *Builder) build(stdout io.Writer, stderr io.Writer, out io.Writer) (stri
 		}
 	}
 
+    fmt.Println("dockerfile/builder.go  Successfully built %s", shortImgID)
 	fmt.Fprintf(b.Stdout, "Successfully built %s\n", shortImgID)
 	return b.image, nil
 }
@@ -331,6 +367,7 @@ func (b *Builder) Cancel() {
 //
 // TODO: Remove?
 func BuildFromConfig(config *container.Config, changes []string) (*container.Config, error) {
+    fmt.Println("dockerfile/builder.go  BuildFromConfig()")
 	b, err := NewBuilder(context.Background(), nil, nil, nil, nil)
 	if err != nil {
 		return nil, err
@@ -361,7 +398,7 @@ func BuildFromConfig(config *container.Config, changes []string) (*container.Con
 	}
 
 	for i, n := range ast.Children {
-		if err := b.dispatch(i, total, n); err != nil {
+		if _, err := b.dispatch(i, total, n, ""); err != nil {
 			return nil, err
 		}
 	}

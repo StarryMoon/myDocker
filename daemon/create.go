@@ -31,6 +31,7 @@ func (daemon *Daemon) CreateManagedContainer(params types.ContainerCreateConfig)
 
 // ContainerCreate creates a regular container
 func (daemon *Daemon) ContainerCreate(params types.ContainerCreateConfig) (containertypes.ContainerCreateCreatedBody, error) {
+    fmt.Println("daemon/create.go ContainerCreate()")
 	return daemon.containerCreate(params, false)
 }
 
@@ -38,16 +39,19 @@ func (daemon *Daemon) containerCreate(params types.ContainerCreateConfig, manage
 	start := time.Now()
 	if params.Config == nil {
 		return containertypes.ContainerCreateCreatedBody{}, fmt.Errorf("Config cannot be empty in order to create a container")
+        fmt.Println("daemon/create.go Config cannot be empty ")
 	}
 
 	warnings, err := daemon.verifyContainerSettings(params.HostConfig, params.Config, false)
 	if err != nil {
 		return containertypes.ContainerCreateCreatedBody{Warnings: warnings}, err
+        fmt.Println("daemon/create.go verifyContainerSetting is error")
 	}
 
 	err = daemon.verifyNetworkingConfig(params.NetworkingConfig)
 	if err != nil {
 		return containertypes.ContainerCreateCreatedBody{Warnings: warnings}, err
+        fmt.Println("daemon/create.go verifyNetworkingConfig is error")
 	}
 
 	if params.HostConfig == nil {
@@ -56,6 +60,7 @@ func (daemon *Daemon) containerCreate(params types.ContainerCreateConfig, manage
 	err = daemon.adaptContainerSettings(params.HostConfig, params.AdjustCPUShares)
 	if err != nil {
 		return containertypes.ContainerCreateCreatedBody{Warnings: warnings}, err
+        fmt.Println("daemon/create.go ContainerCreateCreatedBody is error")
 	}
 
 	container, err := daemon.create(params, managed)
@@ -75,6 +80,8 @@ func (daemon *Daemon) create(params types.ContainerCreateConfig, managed bool) (
 		imgID     image.ID
 		err       error
 	)
+
+    fmt.Println("daemon/create.go create()")
 
 	if params.Config.Image != "" {
 		img, err = daemon.GetImage(params.Config.Image)

@@ -120,6 +120,7 @@ func (s *HTTPServer) Close() error {
 }
 
 func (s *Server) makeHTTPHandler(handler httputils.APIFunc) http.HandlerFunc {
+    fmt.Println("api/server/server.go  makeHTTPHandler()")
 	return func(w http.ResponseWriter, r *http.Request) {
 		// Define the context that we'll pass around to share info
 		// like the docker-request-id.
@@ -129,23 +130,30 @@ func (s *Server) makeHTTPHandler(handler httputils.APIFunc) http.HandlerFunc {
 		// immediate function being called should still be passed
 		// as 'args' on the function call.
 		ctx := context.WithValue(context.Background(), httputils.UAStringKey, r.Header.Get("User-Agent"))
-		handlerFunc := s.handlerWithGlobalMiddlewares(handler)
-
-		vars := mux.Vars(r)
+		
+        fmt.Println("api/server/server.go  handlerWithGlobalMiddlewares()")
+        handlerFunc := s.handlerWithGlobalMiddlewares(handler)
+        fmt.Println("api/server/server.go  makeHTTPHandler() handlerFunc :", handlerFunc)
+		
+        vars := mux.Vars(r)
 		if vars == nil {
 			vars = make(map[string]string)
 		}
 
+        fmt.Println("api/server/server.go makeHTTPHandler() method : ", r.Method)
+        fmt.Println("api/server/server.go makeHTTPHandler() urlPath : ", r.URL.Path)
 		if err := handlerFunc(ctx, w, r, vars); err != nil {
 			logrus.Errorf("Handler for %s %s returned error: %v", r.Method, r.URL.Path, err)
 			httputils.MakeErrorHandler(err)(w, r)
 		}
+
 	}
 }
 
 // InitRouter initializes the list of routers for the server.
 // This method also enables the Go profiler if enableProfiler is true.
 func (s *Server) InitRouter(enableProfiler bool, routers ...router.Router) {
+    fmt.Println("cmd/server/server.go   InitRouter()")
 	s.routers = append(s.routers, routers...)
 
 	m := s.createMux()
@@ -159,6 +167,7 @@ func (s *Server) InitRouter(enableProfiler bool, routers ...router.Router) {
 
 // createMux initializes the main router the server uses.
 func (s *Server) createMux() *mux.Router {
+    fmt.Println("api/server/server.go  createMux()")
 	m := mux.NewRouter()
 
 	logrus.Debug("Registering routers")

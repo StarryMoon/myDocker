@@ -811,13 +811,14 @@ func (daemon *Daemon) Shutdown() error {
 // Mount sets container.BaseFS
 // (is it not set coming in? why is it unset?)
 func (daemon *Daemon) Mount(container *container.Container) error {
+    fmt.Println("daemon/daemon.go  Mount()")
 	dir, err := container.RWLayer.Mount(container.GetMountLabel())
 	if err != nil {
 		return err
 	}
 	logrus.Debugf("container mounted via layerStore: %v", dir)
 
-    fmt.Println("container mounted via laystore: %v", dir)
+    fmt.Println("daemon/daemon.go  container mounted via laystore: ", dir)
 
 	if container.BaseFS != dir {
 		// The mount path reported by the graph driver should always be trusted on Windows, since the

@@ -181,10 +181,14 @@ func (is *store) Search(term string) (ID, error) {
 func (is *store) Get(id ID) (*Image, error) {
 	// todo: Check if image is in images
 	// todo: Detect manual insertions and start using them
-	config, err := is.fs.Get(id.Digest())
+    fmt.Println("image/store.go Get()")
+
+    config, err := is.fs.Get(id.Digest())
 	if err != nil {
 		return nil, err
 	}
+
+    //fmt.Println("image/store.go Get() %v", config)
 
 	img, err := NewFromJSON(config)
 	if err != nil {

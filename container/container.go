@@ -101,6 +101,7 @@ type CommonContainer struct {
 	LogCopier      *logger.Copier `json:"-"`
 	restartManager restartmanager.RestartManager
 	attachContext  *attachContext
+    isBuildingImage      bool
 }
 
 // NewBaseContainer creates a new container with its
@@ -351,6 +352,18 @@ func (container *Container) StartLogger() (logger.Logger, error) {
 	}
 	return c(ctx)
 }
+
+
+
+func (container *Container) GetBuildingStatus() bool {
+    return container.isBuildingImage
+}
+
+func (container *Container) SetBuildingStatus(s bool) {
+    container.isBuildingImage = s
+}
+
+
 
 // GetProcessLabel returns the process label for the container.
 func (container *Container) GetProcessLabel() string {

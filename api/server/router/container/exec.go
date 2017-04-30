@@ -25,6 +25,8 @@ func (s *containerRouter) getExecByID(ctx context.Context, w http.ResponseWriter
 }
 
 func (s *containerRouter) postContainerExecCreate(ctx context.Context, w http.ResponseWriter, r *http.Request, vars map[string]string) error {
+    fmt.Println("api/server/router/container/exec.go   postContainerExecCreate()")
+    fmt.Println("api/server/router/container/exec.go   postContainerExecCreate()", r.Method)
 	if err := httputils.ParseForm(r); err != nil {
 		return err
 	}
@@ -32,6 +34,8 @@ func (s *containerRouter) postContainerExecCreate(ctx context.Context, w http.Re
 		return err
 	}
 	name := vars["name"]
+
+    fmt.Println("api/server/router/container/exec.go postContainerExecCreate() : ", name)
 
 	execConfig := &types.ExecConfig{}
 	if err := json.NewDecoder(r.Body).Decode(execConfig); err != nil {
@@ -42,7 +46,19 @@ func (s *containerRouter) postContainerExecCreate(ctx context.Context, w http.Re
 		return fmt.Errorf("No exec command specified")
 	}
 
-	// Register an instance of Exec in container.
+    fmt.Println("api/server/router/container/exec.go postContainerExecCreate() : ", execConfig.User)
+    fmt.Println("api/server/router/container/exec.go postContainerExecCreate() : ", execConfig.Privileged)
+    fmt.Println("api/server/router/container/exec.go postContainerExecCreate() : ", execConfig.Tty)
+    fmt.Println("api/server/router/container/exec.go postContainerExecCreate() : ", execConfig.AttachStdin)
+    fmt.Println("api/server/router/container/exec.go postContainerExecCreate() : ", execConfig.AttachStderr)
+    fmt.Println("api/server/router/container/exec.go postContainerExecCreate() : ", execConfig.AttachStdout)
+    fmt.Println("api/server/router/container/exec.go postContainerExecCreate() : ", execConfig.Detach)
+    fmt.Println("api/server/router/container/exec.go postContainerExecCreate() : ", execConfig.DetachKeys)
+    fmt.Println("api/server/router/container/exec.go postContainerExecCreate() : ", execConfig.Env)
+    fmt.Println("api/server/router/container/exec.go postContainerExecCreate() : ", execConfig.Cmd)
+
+
+    // Register an instance of Exec in container.
 	id, err := s.backend.ContainerExecCreate(name, execConfig)
 	if err != nil {
 		logrus.Errorf("Error setting up exec command in container %s: %v", name, err)
@@ -78,6 +94,7 @@ func (s *containerRouter) postContainerExecStart(ctx context.Context, w http.Res
 		return err
 	}
 
+    fmt.Println("api/server/router/container/exec.go   postContainerExecStart() : ", execName)
 	if exists, err := s.backend.ExecExists(execName); !exists {
 		return err
 	}
@@ -113,13 +130,18 @@ func (s *containerRouter) postContainerExecStart(ctx context.Context, w http.Res
 
 	// Now run the user process in container.
 	// Maybe we should we pass ctx here if we're not detaching?
-	if err := s.backend.ContainerExecStart(context.Background(), execName, stdin, stdout, stderr); err != nil {
+    fmt.Println("api/server/router/container/exec.go   postContainerExecStart() ")
+	
+    if err := s.backend.ContainerExecStart(context.Background(), execName, stdin, stdout, stderr); err != nil {
 		if execStartCheck.Detach {
 			return err
 		}
 		stdout.Write([]byte(err.Error() + "\r\n"))
 		logrus.Errorf("Error running exec in container: %v", err)
+        fmt.Println("api/server/router/container/exec.go  postContainerExecStart() is err!!!")
 	}
+
+    fmt.Println("api/server/router/container/exec.go   postContainerExecStart() ContainerExecStart()")
 	return nil
 }
 

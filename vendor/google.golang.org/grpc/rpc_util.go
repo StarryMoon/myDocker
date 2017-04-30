@@ -343,6 +343,7 @@ type rpcError struct {
 }
 
 func (e *rpcError) Error() string {
+    fmt.Println("vendor/google.golang.org/grpc/rpc_util.go  Error()")
 	return fmt.Sprintf("rpc error: code = %d desc = %s", e.code, e.desc)
 }
 
@@ -367,6 +368,7 @@ func ErrorDesc(err error) string {
 	if e, ok := err.(*rpcError); ok {
 		return e.desc
 	}
+    fmt.Println("vendor/google.golang.org/grpc/rpc_util.go  ErrorDesc()")
 	return err.Error()
 }
 
@@ -384,6 +386,7 @@ func Errorf(c codes.Code, format string, a ...interface{}) error {
 
 // toRPCErr converts an error into a rpcError.
 func toRPCErr(err error) error {
+    fmt.Println("vendor/google.golang.org/grpc/rpc_util.go  toRPCErr()")
 	switch e := err.(type) {
 	case *rpcError:
 		return err

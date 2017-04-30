@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"sync"
+    "fmt"
 
 	"github.com/Sirupsen/logrus"
 	"github.com/docker/docker/libcontainerd"
@@ -47,7 +48,8 @@ func GetManager() *Manager {
 // Init (was NewManager) instantiates the singleton Manager.
 // TODO: revert this to NewManager once we get rid of all the singletons.
 func Init(root string, ps *store.Store, remote libcontainerd.Remote, rs registry.Service, liveRestore bool, evL eventLogger) (err error) {
-	if manager != nil {
+    fmt.Println("plugin/manager.go Init()")
+    if manager != nil {
 		return nil
 	}
 
@@ -76,6 +78,7 @@ func Init(root string, ps *store.Store, remote libcontainerd.Remote, rs registry
 // StateChanged updates plugin internals using libcontainerd events.
 func (pm *Manager) StateChanged(id string, e libcontainerd.StateInfo) error {
 	logrus.Debugf("plugin state changed %s %#v", id, e)
+    fmt.Println("plugin/manager.go/StateChanged() ", e.State)
 
 	switch e.State {
 	case libcontainerd.StateExit:
@@ -97,6 +100,19 @@ func (pm *Manager) StateChanged(id string, e libcontainerd.StateInfo) error {
 
 	return nil
 }
+
+
+func (pm *Manager) GetFirstContainerBuildingStatus(id string) bool {
+
+      fmt.Println("plugin/manager.go GetFirstContaineriBuildingStatus() is null!!!")
+      return false
+}
+func (pm *Manager) TriggerExitEvent(cId string) error {
+
+      fmt.Println("plugin/manager.go TriggerExitEvent() is null!!!")
+      return nil
+}
+
 
 func (pm *Manager) init() error {
 	dt, err := os.Open(filepath.Join(pm.libRoot, "plugins.json"))

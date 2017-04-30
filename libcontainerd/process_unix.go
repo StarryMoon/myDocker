@@ -11,6 +11,8 @@ import (
 	"strings"
 	"time"
 
+    "fmt"
+
 	containerd "github.com/docker/containerd/api/grpc/types"
 	"github.com/tonistiigi/fifo"
 	"golang.org/x/net/context"
@@ -82,6 +84,7 @@ func (p *process) openFifos(terminal bool) (pipe *IOPipe, err error) {
 }
 
 func (p *process) sendCloseStdin() error {
+    fmt.Println("libcontainerd/process_unix.go  sendCloseStdin()")
 	_, err := p.client.remote.apiClient.UpdateProcess(context.Background(), &containerd.UpdateProcessRequest{
 		Id:         p.containerID,
 		Pid:        p.friendlyName,

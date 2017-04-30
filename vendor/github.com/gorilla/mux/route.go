@@ -104,6 +104,7 @@ func (r *Route) GetHandler() http.Handler {
 // Name sets the name for the route, used to build URLs.
 // If the name was registered already it will be overwritten.
 func (r *Route) Name(name string) *Route {
+//    fmt.Println("vendor/github.com/gorilla/mux/route.go  Name()")
 	if r.name != "" {
 		r.err = fmt.Errorf("mux: route already has name %q, can't set %q",
 			r.name, name)
@@ -597,7 +598,8 @@ type parentRoute interface {
 
 // getNamedRoutes returns the map where named routes are registered.
 func (r *Route) getNamedRoutes() map[string]*Route {
-	if r.parent == nil {
+//	fmt.Println("vendor/github.com/gorilla/mux/route.go  getNameRoutes()")
+    if r.parent == nil {
 		// During tests router is not always set.
 		r.parent = NewRouter()
 	}
@@ -606,6 +608,7 @@ func (r *Route) getNamedRoutes() map[string]*Route {
 
 // getRegexpGroup returns regexp definitions from this route.
 func (r *Route) getRegexpGroup() *routeRegexpGroup {
+  //  fmt.Println("vendor/github.com/gorilla/mux/route.go    getRegexpGroup()")
 	if r.regexp == nil {
 		if r.parent == nil {
 			// During tests router is not always set.

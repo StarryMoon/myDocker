@@ -1,6 +1,9 @@
 package container
 
 import (
+
+    "fmt"
+
 	"github.com/docker/docker/api/server/httputils"
 	"github.com/docker/docker/api/server/router"
 )
@@ -22,6 +25,7 @@ type containerRouter struct {
 
 // NewRouter initializes a new container router
 func NewRouter(b Backend, decoder httputils.ContainerDecoder) router.Router {
+    fmt.Println("api/server/router/container/container.go  NewRouter()")
 	r := &containerRouter{
 		backend: b,
 		decoder: decoder,
@@ -32,11 +36,13 @@ func NewRouter(b Backend, decoder httputils.ContainerDecoder) router.Router {
 
 // Routes returns the available routes to the container controller
 func (r *containerRouter) Routes() []router.Route {
+    fmt.Println("api/server/router/container/container.go  Routes()")
 	return r.routes
 }
 
 // initRoutes initializes the routes in container router
 func (r *containerRouter) initRoutes() {
+    fmt.Println("api/server/router/container/container.go  initRoutes()")
 	r.routes = []router.Route{
 		// HEAD
 		router.NewHeadRoute("/containers/{name:.*}/archive", r.headContainersArchive),

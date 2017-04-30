@@ -492,12 +492,15 @@ func (a *Driver) DiffSize(id, parent string) (size int64, err error) {
 // layer with the specified id and parent, returning the size of the
 // new layer in bytes.
 func (a *Driver) ApplyDiff(id, parent string, diff io.Reader) (size int64, err error) {
+    fmt.Println("daemon/graphdriver/aufs/aufs.go  ApplyDiff()")
 	if !a.isParent(id, parent) {
 		return a.naiveDiff.ApplyDiff(id, parent, diff)
 	}
 
+    fmt.Println("daemon/graphdriver/aufs/aufs.go  before applyDiff()")
 	// AUFS doesn't need the parent id to apply the diff if it is the direct parent.
 	if err = a.applyDiff(id, diff); err != nil {
+        fmt.Println("daemon/graphdriver/aufs/aufs.go  ApplyDiff()i is err!!!")
 		return
 	}
 

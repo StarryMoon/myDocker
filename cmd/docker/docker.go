@@ -20,6 +20,7 @@ import (
 )
 
 func newDockerCommand(dockerCli *command.DockerCli) *cobra.Command {
+    fmt.Println("cmd/docker/docker.go  newDockerCommand()")
 	opts := cliflags.NewClientOptions()
 	var flags *pflag.FlagSet
 
@@ -94,12 +95,14 @@ func noArgs(cmd *cobra.Command, args []string) error {
 }
 
 func main() {
+    fmt.Println("cmd/docker/docker.go  main()")
 	// Set terminal emulation based on platform as required.
 	stdin, stdout, stderr := term.StdStreams()
 	logrus.SetOutput(stderr)
 
 	dockerCli := command.NewDockerCli(stdin, stdout, stderr)
 	cmd := newDockerCommand(dockerCli)
+    fmt.Println("cmd/docker/docker.go  main() cmd : ", cmd)
 
 	if err := cmd.Execute(); err != nil {
 		if sterr, ok := err.(cli.StatusError); ok {
@@ -116,6 +119,7 @@ func main() {
 		fmt.Fprintln(stderr, err)
 		os.Exit(1)
 	}
+    fmt.Println("cmd/docker/docker.go  main() end")
 }
 
 func showVersion() {

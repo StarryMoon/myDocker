@@ -424,6 +424,7 @@ func clearExtension(pb Message, fieldNum int32) {
 // GetExtension parses and returns the given extension of pb.
 // If the extension is not present and has no default value it returns ErrMissingExtension.
 func GetExtension(pb Message, extension *ExtensionDesc) (interface{}, error) {
+    fmt.Println("vendor/github.com/gogo/protobuf/proto/extensions.go  GetExtension()")
 	if epb, doki := pb.(extensionsBytes); doki {
 		ext := epb.GetExtensions()
 		o := 0
@@ -487,6 +488,7 @@ func GetExtension(pb Message, extension *ExtensionDesc) (interface{}, error) {
 	// That way it is safe to mutate what we return.
 	e.value = v
 	e.desc = extension
+    fmt.Println("vendor/github.com/gogo/protobuf/proto/extensions.go  GetExtension() e.desc : ", extension)
 	e.enc = nil
 	emap[extension.Field] = e
 	return e.value, nil

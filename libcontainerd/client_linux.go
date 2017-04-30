@@ -49,15 +49,22 @@ func (clnt *client) AddProcess(ctx context.Context, containerID, processFriendly
 	clnt.lock(containerID)
 	defer clnt.unlock(containerID)
 	container, err := clnt.getContainer(containerID)
-	if err != nil {
+
+    fmt.Println("libcontainerd/client_linux.go  AddProcess()")
+
+    if err != nil {
+        fmt.Println("libcontainerd/client_linux.go  AddProcess() get container is err!!!")
 		return -1, err
 	}
 
 	spec, err := container.spec()
 	if err != nil {
+        fmt.Println("libcontainerd/client_linux.go  AddProcess() container spec() is err!!!")
 		return -1, err
-	}
-	sp := spec.Process
+	}  
+    fmt.Println("libcontainerd/client_linux.go  AddProcess() container spec() : ", spec)
+	
+    sp := spec.Process
 	sp.Args = specp.Args
 	sp.Terminal = specp.Terminal
 	if len(specp.Env) > 0 {
@@ -103,11 +110,19 @@ func (clnt *client) AddProcess(ctx context.Context, containerID, processFriendly
 
 	iopipe, err := p.openFifos(sp.Terminal)
 	if err != nil {
+        fmt.Println("libcontainerd/client_linux.go  AddProcess() open fifos is err!!!")
 		return -1, err
 	}
 
+    
+    fmt.Println("libcontainerd/client_linux.go  AddProcess() ctx : ", ctx)
+    fmt.Println("libcontainerd/client_linux.go  AddProcess() r : ", r)
+    fmt.Println("libcontainerd/client_linux.go  AddProcess() client : ", clnt)
+
+
 	resp, err := clnt.remote.apiClient.AddProcess(ctx, r)
 	if err != nil {
+        fmt.Println("libcontainerd/client_linux.go  AddProcess() remote apiclient is err!!! : ", err)
 		p.closeFifos(iopipe)
 		return -1, err
 	}
@@ -122,10 +137,11 @@ func (clnt *client) AddProcess(ctx context.Context, containerID, processFriendly
 				err = err2
 			}
 		})
+        fmt.Println("libcontainerd/client_linux.go  AddProcess() new write closer wrapper is err!!!")
 		return err
 	})
 
-    fmt.Println("libcontainered/client_linux.go  create newProcess")
+    fmt.Println("libcontainerd/client_linux.go  create newProcess")
 
 	container.processes[processFriendlyName] = p
 
@@ -229,6 +245,8 @@ func (clnt *client) cleanupOldRootfs(containerID string) {
 func (clnt *client) setExited(containerID string, exitCode uint32) error {
 	clnt.lock(containerID)
 	defer clnt.unlock(containerID)
+
+    fmt.Println("libcontainerd/client_linux.go setExited()")
 
 	err := clnt.backend.StateChanged(containerID, StateInfo{
 		CommonStateInfo: CommonStateInfo{
@@ -358,6 +376,8 @@ func (clnt *client) restore(cont *containerd.Container, lastEvent *containerd.Ev
 
 	clnt.appendContainer(container)
 
+    fmt.Println("libcontainerd/client_linux.go restore()")
+
 	err = clnt.backend.StateChanged(containerID, StateInfo{
 		CommonStateInfo: CommonStateInfo{
 			State: StateRestore,
@@ -372,6 +392,7 @@ func (clnt *client) restore(cont *containerd.Container, lastEvent *containerd.Ev
 	if lastEvent != nil {
 		// This should only be a pause or resume event
 		if lastEvent.Type == StatePause || lastEvent.Type == StateResume {
+            fmt.Println("libcontainerd/client_linux.go   StatePause/Resume")
 			return clnt.backend.StateChanged(containerID, StateInfo{
 				CommonStateInfo: CommonStateInfo{
 					State: lastEvent.Type,
@@ -439,6 +460,7 @@ func (clnt *client) getContainerLastEvent(id string) (*containerd.Event, error) 
 }
 
 func (clnt *client) Restore(containerID string, attachStdio StdioCallback, options ...CreateOption) error {
+    fmt.Println("libcontainerd/client_linux.go Restore() ")
 	// Synchronize with live events
 	clnt.remote.Lock()
 	defer clnt.remote.Unlock()
@@ -453,6 +475,7 @@ func (clnt *client) Restore(containerID string, attachStdio StdioCallback, optio
 	// Get its last event
 	ev, eerr := clnt.getContainerLastEvent(containerID)
 	if err != nil || cont.Status == "Stopped" {
+        fmt.Println("libcontainerd/client_linux.go  Restore() err!=nil&&Stopped")
 		if err != nil {
 			logrus.Warnf("libcontainerd: failed to retrieve container %s state: %v", containerID, err)
 		}
@@ -485,6 +508,8 @@ func (clnt *client) Restore(containerID string, attachStdio StdioCallback, optio
 		if eerr == nil && ev != nil && ev.Pid == InitFriendlyName && ev.Type == StateExit {
 			ec = ev.Status
 		}
+
+        fmt.Println("lincontainerd/client_linux.go Restore()/setExited()")
 		clnt.setExited(containerID, ec)
 
 		return nil
@@ -532,7 +557,8 @@ func (clnt *client) Restore(containerID string, attachStdio StdioCallback, optio
 	}
 	// relock because of the defer
 	clnt.remote.Lock()
-
+    
+    fmt.Println("libcontainerd/client_linux.go  Restore() deleteContainer")
 	clnt.deleteContainer(containerID)
 
 	return clnt.setExited(containerID, uint32(255))

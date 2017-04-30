@@ -2,7 +2,8 @@ package daemon
 
 import (
 	"time"
-
+    "fmt"
+   
 	"golang.org/x/net/context"
 )
 
@@ -12,7 +13,8 @@ import (
 // timeout, an error is returned. If you want to wait forever, supply
 // a negative duration for the timeout.
 func (daemon *Daemon) ContainerWait(name string, timeout time.Duration) (int, error) {
-	container, err := daemon.GetContainer(name)
+    fmt.Println("daemon/wait.go  ContainerWait()")
+    container, err := daemon.GetContainer(name)
 	if err != nil {
 		return -1, err
 	}

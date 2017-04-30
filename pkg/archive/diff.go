@@ -20,6 +20,7 @@ import (
 // compressed or uncompressed.
 // Returns the size in bytes of the contents of the layer.
 func UnpackLayer(dest string, layer io.Reader, options *TarOptions) (size int64, err error) {
+    //fmt.Println("pkg/archive/diff.go  UnpackLayer()")
 	tr := tar.NewReader(layer)
 	trBuf := pools.BufioReader32KPool.Get(tr)
 	defer pools.BufioReader32KPool.Put(trBuf)
@@ -38,6 +39,7 @@ func UnpackLayer(dest string, layer io.Reader, options *TarOptions) (size int64,
 		return 0, err
 	}
 
+    //fmt.Println("pkg/archive/diff.go  UnpackLayer() after getrootuidgid")
 	aufsTempdir := ""
 	aufsHardlinks := make(map[string]*tar.Header)
 
@@ -97,6 +99,7 @@ func UnpackLayer(dest string, layer io.Reader, options *TarOptions) (size int64,
 			}
 		}
 
+    //fmt.Println("pkg/archive/diff.go  UnpackLayer() after if{}")
 		// Skip AUFS metadata dirs
 		if strings.HasPrefix(hdr.Name, WhiteoutMetaPrefix) {
 			// Regular files inside /.wh..wh.plnk can be used as hardlink targets
@@ -126,6 +129,7 @@ func UnpackLayer(dest string, layer io.Reader, options *TarOptions) (size int64,
 			return 0, err
 		}
 
+    //fmt.Println("pkg/archive/diff.go  UnpackLayer() after hasprefix()")
 		// Note as these operations are platform specific, so must the slash be.
 		if strings.HasPrefix(rel, ".."+string(os.PathSeparator)) {
 			return 0, breakoutError(fmt.Errorf("%q is outside of %q", hdr.Name, dest))
@@ -166,6 +170,7 @@ func UnpackLayer(dest string, layer io.Reader, options *TarOptions) (size int64,
 				}
 			}
 		} else {
+    //fmt.Println("pkg/archive/diff.go  UnpackLayer() before elselastat")
 			// If path exits we almost always just want to remove and replace it.
 			// The only exception is when it is a directory *and* the file from
 			// the layer is also a directory. Then we want to merge them (i.e.
@@ -232,6 +237,7 @@ func UnpackLayer(dest string, layer io.Reader, options *TarOptions) (size int64,
 		}
 	}
 
+    //fmt.Println("pkg/archive/diff.go  UnpackLayer() before hadrfor")
 	for _, hdr := range dirs {
 		path := filepath.Join(dest, hdr.Name)
 		if err := system.Chtimes(path, hdr.AccessTime, hdr.ModTime); err != nil {
@@ -260,6 +266,7 @@ func ApplyUncompressedLayer(dest string, layer io.Reader, options *TarOptions) (
 
 // do the bulk load of ApplyLayer, but allow for not calling DecompressStream
 func applyLayerHandler(dest string, layer io.Reader, options *TarOptions, decompress bool) (int64, error) {
+    fmt.Println("pkg/archive/diff.go  applyLayerHandler()")
 	dest = filepath.Clean(dest)
 
 	// We need to be able to set any perms
@@ -269,11 +276,14 @@ func applyLayerHandler(dest string, layer io.Reader, options *TarOptions, decomp
 	}
 	defer system.Umask(oldmask) // ignore err, ErrNotSupportedPlatform
 
+    fmt.Println("pkg/archive/diff.go  applyLayerHandler() before decompress")
 	if decompress {
 		layer, err = DecompressStream(layer)
+    fmt.Println("pkg/archive/diff.go  applyLayerHandler() decompressing")
 		if err != nil {
 			return 0, err
 		}
 	}
+    fmt.Println("pkg/archive/diff.go  applyLayerHandler() decompressed")
 	return UnpackLayer(dest, layer, options)
 }

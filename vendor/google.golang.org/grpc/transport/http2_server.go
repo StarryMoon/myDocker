@@ -42,6 +42,8 @@ import (
 	"strconv"
 	"sync"
 
+    "fmt"
+
 	"golang.org/x/net/context"
 	"golang.org/x/net/http2"
 	"golang.org/x/net/http2/hpack"
@@ -225,6 +227,7 @@ func (t *http2Server) operateHeaders(frame *http2.MetaHeadersFrame, handle func(
 // HandleStreams receives incoming streams using the given handler. This is
 // typically run in a separate goroutine.
 func (t *http2Server) HandleStreams(handle func(*Stream)) {
+    fmt.Println("vendor/google/grpc/transport/http2_server.go  HandleStreams()")
 	// Check the validity of client preface.
 	preface := make([]byte, len(clientPreface))
 	if _, err := io.ReadFull(t.conn, preface); err != nil {
@@ -313,6 +316,7 @@ func (t *http2Server) getStream(f http2.Frame) (*Stream, bool) {
 		// The stream is already done.
 		return nil, false
 	}
+    fmt.Println("vendor/google/grpc/transport/http2_server.go  getStream() streamID : ", s.id)
 	return s, true
 }
 
@@ -493,6 +497,7 @@ func (t *http2Server) WriteHeader(s *Stream, md metadata.MD) error {
 // TODO(zhaoq): Now it indicates the end of entire stream. Revisit if early
 // OK is adopted.
 func (t *http2Server) WriteStatus(s *Stream, statusCode codes.Code, statusDesc string) error {
+   fmt.Println("vendor/google/grpc/transport/http2_server.go  WriteStatus() stream.id : ", s.id)
 	var headersSent bool
 	s.mu.Lock()
 	if s.state == streamDone {

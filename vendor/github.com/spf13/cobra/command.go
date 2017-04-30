@@ -692,6 +692,7 @@ func (c *Command) errorMsgFromParse() string {
 // and run through the command tree finding appropriate matches
 // for commands and then corresponding flags.
 func (c *Command) Execute() error {
+    fmt.Println("vendor/github.com/spf13/cobra/command.go  Execute()")
 	_, err := c.ExecuteC()
 	return err
 }
@@ -720,6 +721,9 @@ func (c *Command) ExecuteC() (cmd *Command, err error) {
 	} else {
 		args = c.args
 	}
+    fmt.Println("vendor/github.com/spf13/cobra/command.go  ExecuteC() cmdArgs :", c.args) 
+    fmt.Println("vendor/github.com/spf13/cobra/command.go  ExecuteC() osArgs :", os.Args) 
+    fmt.Println("vendor/github.com/spf13/cobra/command.go  ExecuteC() args :", args) 
 
 	var flags []string
 	if c.TraverseChildren {

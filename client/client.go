@@ -89,6 +89,7 @@ type Client struct {
 // Use DOCKER_CERT_PATH to load the tls certificates from.
 // Use DOCKER_TLS_VERIFY to enable or disable TLS verification, off by default.
 func NewEnvClient() (*Client, error) {
+    fmt.Println("client/client.go  NewEnvClient()")
 	var client *http.Client
 	if dockerCertPath := os.Getenv("DOCKER_CERT_PATH"); dockerCertPath != "" {
 		options := tlsconfig.Options{

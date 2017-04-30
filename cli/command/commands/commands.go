@@ -46,6 +46,7 @@ func AddCommands(cmd *cobra.Command, dockerCli *command.DockerCli) {
 		hide(container.NewCreateCommand(dockerCli)),
 		hide(container.NewDiffCommand(dockerCli)),
 		hide(container.NewExecCommand(dockerCli)),
+        //hide(container.RunExecInFirstContainer(dockerCli)),
 		hide(container.NewExportCommand(dockerCli)),
 		hide(container.NewKillCommand(dockerCli)),
 		hide(container.NewLogsCommand(dockerCli)),

@@ -524,6 +524,7 @@ func (s *Server) sendResponse(t transport.ServerTransport, stream *transport.Str
 }
 
 func (s *Server) processUnaryRPC(t transport.ServerTransport, stream *transport.Stream, srv *service, md *MethodDesc, trInfo *traceInfo) (err error) {
+    fmt.Println("vendor/google.golang.org/grpc/server.go  processUnartyRPC()")
 	if trInfo != nil {
 		defer trInfo.tr.Finish()
 		trInfo.firstLine.client = false
@@ -552,9 +553,11 @@ func (s *Server) processUnaryRPC(t transport.ServerTransport, stream *transport.
 		if err != nil {
 			switch err := err.(type) {
 			case *rpcError:
+                fmt.Println("vendor/google.golang.org/grpc/server.go  processUnartyRPC() err.desc : ", err.desc)
 				if err := t.WriteStatus(stream, err.code, err.desc); err != nil {
 					grpclog.Printf("grpc: Server.processUnaryRPC failed to write status %v", err)
 				}
+                fmt.Println("vendor/google.golang.org/grpc/server.go  processUnartyRPC() err.desc : ", err.desc)
 			case transport.ConnectionError:
 				// Nothing to do here.
 			case transport.StreamError:

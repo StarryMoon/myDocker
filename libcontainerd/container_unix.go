@@ -29,6 +29,7 @@ type container struct {
 	oom         bool
 	runtime     string
 	runtimeArgs []string
+//    isBuilding  bool
 }
 
 type runtime struct {
@@ -155,21 +156,25 @@ func (ctr *container) start(checkpoint string, checkpointDir string, attachStdio
 	}
 	ctr.client.appendContainer(ctr)
 
+    fmt.Println("libcontainered/container_unix.go Create()  attachStdio StdioCallback")
 	if err := attachStdio(*iopipe); err != nil {
 		ctr.closeFifos(iopipe)
 		return err
 	}
 
 	resp, err := ctr.client.remote.apiClient.CreateContainer(context.Background(), r)
-	if err != nil {
+    fmt.Println("libcontainerd/container_unix.go     apiClient CreateContainer")
+    if err != nil {
 		ctr.closeFifos(iopipe)
 		return err
 	}
 	ctr.systemPid = systemPid(resp.Container)
 	close(ready)
 
+    fmt.Println("libcontainerd/container_unix.go     start to sleep 10 seconds")
+    time.Sleep(time.Second * 10)
+    fmt.Println("libcontainerd/container_unix.go     sleep end")
 
-    fmt.Println("libcontainerd/container_unix.go     apiClient CreateContainer")
 
 	return ctr.client.backend.StateChanged(ctr.containerID, StateInfo{
 		CommonStateInfo: CommonStateInfo{
@@ -190,6 +195,7 @@ func (ctr *container) newProcess(friendlyName string) *process {
 }
 
 func (ctr *container) handleEvent(e *containerd.Event) error {
+    fmt.Println("libcontainerd/container_unix.go  handleEvent()")
 	ctr.client.lock(ctr.containerID)
 	defer ctr.client.unlock(ctr.containerID)
 	switch e.Type {
@@ -214,13 +220,18 @@ func (ctr *container) handleEvent(e *containerd.Event) error {
 		case StateExit:
 			ctr.clean()
 			ctr.client.deleteContainer(e.Id)
+            fmt.Println("libcontainerd/container_unix.go/handleEvent()  deleteContainer ", e.Id)
 		case StateExitProcess:
 			ctr.cleanProcess(st.ProcessID)
 		}
 		ctr.client.q.append(e.Id, func() {
-			if err := ctr.client.backend.StateChanged(e.Id, st); err != nil {
-				logrus.Errorf("libcontainerd: backend.StateChanged(): %v", err)
+            fmt.Println("libcontainerd/container_unix.go/handleEvent()  StateChanged")
+			eErr := ctr.client.backend.StateChanged(e.Id, st)
+            if eErr != nil {
+				logrus.Errorf("libcontainerd: backend.StateChanged(): %v", eErr)
+                fmt.Println("libcontainered/container_unix.go/handleEvent() err")
 			}
+            fmt.Println("libcontainerd/container_unix.go/handleEvent()  Status : ", e.Type)
 			if e.Type == StatePause || e.Type == StateResume {
 				ctr.pauseMonitor.handle(e.Type)
 			}

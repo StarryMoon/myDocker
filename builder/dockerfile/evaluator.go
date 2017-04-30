@@ -54,10 +54,10 @@ var allowWordExpansion = map[string]bool{
 	command.Expose: true,
 }
 
-var evaluateTable map[string]func(*Builder, []string, map[string]bool, string) error
+var evaluateTable map[string]func(*Builder, []string, map[string]bool, string, string, bool) (string, error)
 
 func init() {
-	evaluateTable = map[string]func(*Builder, []string, map[string]bool, string) error{
+	evaluateTable = map[string]func(*Builder, []string, map[string]bool, string, string, bool) (string, error){
 		command.Add:         add,
 		command.Arg:         arg,
 		command.Cmd:         cmd,
@@ -93,14 +93,17 @@ func init() {
 // such as `RUN` in ONBUILD RUN foo. There is special case logic in here to
 // deal with that, at least until it becomes more of a general concern with new
 // features.
-func (b *Builder) dispatch(stepN int, stepTotal int, ast *parser.Node) error {
+
+//id string, c *container.Container
+func (b *Builder) dispatch(stepN int, stepTotal int, ast *parser.Node, id string) (string, error) {
+    fmt.Println("dockerfile/evaluator.go  dispatchers()  tmpContainerID ", id)
 	cmd := ast.Value
 	upperCasedCmd := strings.ToUpper(cmd)
 
 	// To ensure the user is given a decent error message if the platform
 	// on which the daemon is running does not support a builder command.
 	if err := platformSupports(strings.ToLower(cmd)); err != nil {
-		return err
+		return "",err
 	}
 
 	attrs := ast.Attributes
@@ -109,7 +112,7 @@ func (b *Builder) dispatch(stepN int, stepTotal int, ast *parser.Node) error {
 	strList := []string{}
 	msg := fmt.Sprintf("Step %d/%d : %s", stepN+1, stepTotal, upperCasedCmd)
 
-    fmt.Println("evalutor.go/111")
+    fmt.Println("dockerfile/evalutor.go/dispatch() : ", upperCasedCmd)
 
 	if len(ast.Flags) > 0 {
 		msg += " " + strings.Join(ast.Flags, " ")
@@ -117,7 +120,7 @@ func (b *Builder) dispatch(stepN int, stepTotal int, ast *parser.Node) error {
 
 	if cmd == "onbuild" {
 		if ast.Next == nil {
-			return fmt.Errorf("ONBUILD requires at least one argument")
+			return "", fmt.Errorf("ONBUILD requires at least one argument")
 		}
 		ast = ast.Next.Children[0]
 		strList = append(strList, ast.Value)
@@ -173,13 +176,13 @@ func (b *Builder) dispatch(stepN int, stepTotal int, ast *parser.Node) error {
 			if allowWordExpansion[cmd] {
 				words, err = ProcessWords(str, envs, b.directive.EscapeToken)
 				if err != nil {
-					return err
+					return "", err
 				}
 				strList = append(strList, words...)
 			} else {
 				str, err = ProcessWord(str, envs, b.directive.EscapeToken)
 				if err != nil {
-					return err
+					return "", err
 				}
 				strList = append(strList, str)
 			}
@@ -193,15 +196,22 @@ func (b *Builder) dispatch(stepN int, stepTotal int, ast *parser.Node) error {
 	msg += " " + strings.Join(msgList, " ")
 	fmt.Fprintln(b.Stdout, msg)
 
+
+    finishedFlag := false
+    if stepN == stepTotal {
+       finishedFlag = true
+    }
+
 	// XXX yes, we skip any cmds that are not valid; the parser should have
 	// picked these out already.
 	if f, ok := evaluateTable[cmd]; ok {
+        fmt.Println("dockerfile/evaluator.go evaluateTable[] ", f)
 		b.flags = NewBFlags()
 		b.flags.Args = flags
-		return f(b, strList, attrs, original)
+		return f(b, strList, attrs, original, id, finishedFlag)
 	}
 
-	return fmt.Errorf("Unknown instruction: %s", upperCasedCmd)
+	return "", fmt.Errorf("Unknown instruction: %s", upperCasedCmd)
 }
 
 // checkDispatch does a simple check for syntax errors of the Dockerfile.

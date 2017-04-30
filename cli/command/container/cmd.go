@@ -3,12 +3,15 @@ package container
 import (
 	"github.com/spf13/cobra"
 
+    "fmt"
+
 	"github.com/docker/docker/cli"
 	"github.com/docker/docker/cli/command"
 )
 
 // NewContainerCommand returns a cobra command for `container` subcommands
 func NewContainerCommand(dockerCli *command.DockerCli) *cobra.Command {
+    fmt.Println("cli/command/container/cmd.go  NewContainerCommand()")
 	cmd := &cobra.Command{
 		Use:   "container",
 		Short: "Manage containers",

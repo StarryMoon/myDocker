@@ -98,11 +98,16 @@ func (s *fs) get(dgst digest.Digest) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
+    fmt.Println("image/fs.go get() get byte")
 
+//    fmt.Println("image/fs.go get() content : ", content)
+//    fmt.Println("image/fs.go get() dgst : ", dgst)
 	// todo: maybe optional
 	if digest.FromBytes(content) != dgst {
+//        fmt.Println("image/fs.go get() FromBytes() is err!!!")
 		return nil, fmt.Errorf("failed to verify: %v", dgst)
 	}
+//    fmt.Println("image/fs.go get() end")
 
 	return content, nil
 }

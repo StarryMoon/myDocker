@@ -52,6 +52,8 @@ func (clnt *client) Create(containerID string, checkpoint string, checkpointDir 
 	if _, err := clnt.getContainer(containerID); err == nil {
 		return fmt.Errorf("Container %s is already active", containerID)
 	}
+//    fmt.Println("libcontainered/client_unix.go Create() container status : ", containerCli.ImageID)
+//    fmt.Println("libcontainered/client_unix.go Create() container status : ", containerCli.runtimeArgs)
 
 	uid, gid, err := getRootIDs(specs.Spec(spec))
 	if err != nil {
@@ -62,7 +64,8 @@ func (clnt *client) Create(containerID string, checkpoint string, checkpointDir 
 		return err
 	}
 
-	container := clnt.newContainer(filepath.Join(dir, containerID), options...)
+	fmt.Println("libcontainered/client_unix.go Create() new Container")
+    container := clnt.newContainer(filepath.Join(dir, containerID), options...)
 	if err := container.clean(); err != nil {
 		return err
 	}
@@ -92,6 +95,41 @@ func (clnt *client) Create(containerID string, checkpoint string, checkpointDir 
 
 	return container.start(checkpoint, checkpointDir, attachStdio)
 }
+
+
+
+func (clnt *client) TriggerHandleStream(cId string) error {
+    fmt.Println("libcontainerd/client_unix.go TriggerHandleStream()") 
+
+    container, err := clnt.getContainer(cId)
+    if err!=nil {
+         fmt.Println("libcontainerd/client_unix.go TriggerHandleStream() : container err!!!")
+	     return err
+    }
+	if container == nil {
+         fmt.Println("libcontainerd/client_unix.go TriggerHandleStream() : unknown container!!!")
+	     return nil
+	}
+
+    e := &containerd.Event{
+         Type:      "exit",
+         Id:        cId,
+         //         Status:    "",
+         Pid:       "init",
+         //         Timestamp  time.Now().UnixNano()
+    }
+
+    if err := container.handleEvent(e); err != nil {
+	    fmt.Println("libcontainerd/client_unix.go TriggerHandleStream() : error processing state change!!!")
+        return err
+	}
+
+    fmt.Println("libcontainered/client_unix.go after TriggerHandleStream()")
+        
+    return nil
+}
+
+
 
 func (clnt *client) Signal(containerID string, sig int) error {
 	clnt.lock(containerID)
@@ -124,7 +162,7 @@ func (clnt *client) newContainer(dir string, options ...CreateOption) *container
 		}
 	}
 
-    fmt.Println("libcontainerd/container_unix.go    newContainer()")
+    fmt.Println("libcontainerd/client_unix.go    newContainer()")
 	return container
 }
 

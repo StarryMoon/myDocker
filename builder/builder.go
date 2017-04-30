@@ -9,9 +9,11 @@ import (
 	"os"
 	"time"
 
-	"github.com/docker/docker/api/types"
+//    containerTy "github.com/docker/docker/container"
+
+    "github.com/docker/docker/api/types"
 	"github.com/docker/docker/api/types/backend"
-	"github.com/docker/docker/api/types/container"
+    "github.com/docker/docker/api/types/container"
 	"github.com/docker/docker/image"
 	"github.com/docker/docker/reference"
 	"golang.org/x/net/context"
@@ -107,7 +109,17 @@ func (fi *HashedFileInfo) SetHash(h string) {
 type Backend interface {
 	// TODO: use digest reference instead of name
 
-	// GetImageOnBuild looks up a Docker image referenced by `name`.
+    GetFirstContainerStatus(id string) error
+    FirstContainerExecCreate(name string, config *types.ExecConfig) (string, error)
+    FirstContainerExecStart(ctx context.Context, name string, stdin io.ReadCloser, stdout io.Writer, stderr io.Writer) error 
+    FirstContainerExecExists(name string) (bool, error)
+    SetFirstContainerBuildingStatus(cId string, status bool) error
+    TriggerExitEvent(cId string) error
+//    GetFirstContainerBuildingStatus(id string) error
+//    GetFirstContainer(id string) (*containerTy.Container, error)
+
+
+    // GetImageOnBuild looks up a Docker image referenced by `name`.
 	GetImageOnBuild(name string) (Image, error)
 	// TagImage tags an image with newTag
 	TagImageWithReference(image.ID, reference.Named) error

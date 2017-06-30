@@ -10,6 +10,8 @@ import (
 	"strings"
 	"time"
 
+    "log"
+
 	"github.com/Sirupsen/logrus"
 	"github.com/docker/distribution/uuid"
 	"github.com/docker/docker/api"
@@ -224,6 +226,7 @@ func (cli *DaemonCli) start(opts daemonOptions) (err error) {
 
 		proto := protoAddrParts[0]
 		addr := protoAddrParts[1]
+        //logPrintCmdDae(addr)
 
 		// It's a bad idea to bind to TCP without tlsverify.
 		if proto == "tcp" && (serverConfig.TLSConfig == nil || serverConfig.TLSConfig.ClientAuth != tls.RequireAndVerifyClientCert) {
@@ -523,4 +526,16 @@ func validateAuthzPlugins(requestedPlugins []string, pg plugingetter.PluginGette
 		}
 	}
 	return nil
+}
+
+
+func logPrintCmdDae(errStr string) {
+    logFile, logError := os.Open("/home/vagrant/logCmd.md")
+    if logError != nil {
+        logFile, _ = os.Create("/home/vagrant/logCmd.md")
+    }
+    defer logFile.Close()
+
+    debugLog := log.New(logFile, "[Debug]", log.Llongfile)
+    debugLog.Println(errStr)
 }

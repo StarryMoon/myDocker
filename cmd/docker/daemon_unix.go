@@ -16,6 +16,7 @@ import (
 const daemonBinary = "dockerd"
 
 func newDaemonCommand() *cobra.Command {
+    fmt.Println("cmd/docker/daemon_unix.go  newDaemonCommand()")
 	cmd := &cobra.Command{
 		Use:                "daemon",
 		Hidden:             true,

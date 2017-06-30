@@ -140,21 +140,25 @@ func encKV(enc *hpack.Encoder, k, v string) {
 	if VerboseLogs {
 		log.Printf("http2: server encoding header %q = %q", k, v)
 	}
+    fmt.Println("vendor/golang.org/x/net/http2/write.go  encKV()")
 	enc.WriteField(hpack.HeaderField{Name: k, Value: v})
 }
 
 func (w *writeResHeaders) writeFrame(ctx writeContext) error {
+    fmt.Println("vendor/golang.org/x/net/http2/write.go  writeFrame()")
 	enc, buf := ctx.HeaderEncoder()
 	buf.Reset()
 
 	if w.httpResCode != 0 {
-		encKV(enc, ":status", httpCodeString(w.httpResCode))
+        fmt.Println("vendor/golang.org/x/net/http2/write.go  writeFrame() httpResCode")
+		encKV(enc, ":sttttttttttttttttatus", httpCodeString(w.httpResCode))
 	}
 
 	encodeHeaders(enc, w.h, w.trailers)
 
 	if w.contentType != "" {
-		encKV(enc, "content-type", w.contentType)
+        fmt.Println("vendor/golang.org/x/net/http2/write.go  writeFrame() contentType")
+		encKV(enc, "content-tyyyyyyyyype", w.contentType)
 	}
 	if w.contentLength != "" {
 		encKV(enc, "content-length", w.contentLength)
@@ -208,9 +212,10 @@ type write100ContinueHeadersFrame struct {
 }
 
 func (w write100ContinueHeadersFrame) writeFrame(ctx writeContext) error {
+    fmt.Println("vendor/golang.org/x/net/http2/write.go  100writeFrame()")
 	enc, buf := ctx.HeaderEncoder()
 	buf.Reset()
-	encKV(enc, ":status", "100")
+	encKV(enc, ":ssssssssssssstatus", "100")
 	return ctx.Framer().WriteHeaders(HeadersFrameParam{
 		StreamID:      w.streamID,
 		BlockFragment: buf.Bytes(),

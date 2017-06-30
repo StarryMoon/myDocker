@@ -179,6 +179,7 @@ func (dt *dynamicTable) setMaxSize(v uint32) {
 // Later we'll need a remove operation on dynamicTable.
 
 func (dt *dynamicTable) add(f HeaderField) {
+    //fmt.Println("vendor/golang.org/x/net/http2/hpack/hpack.go  add()")
 	dt.ents = append(dt.ents, f)
 	dt.size += f.Size()
 	dt.evict()
@@ -247,16 +248,19 @@ func (d *Decoder) maxTableIndex() int {
 }
 
 func (d *Decoder) at(i uint64) (hf HeaderField, ok bool) {
+    //fmt.Println("vendor/golang.org/x/net/http2/hpack/hpack.go  at() i : ", i)
 	if i < 1 {
 		return
 	}
 	if i > uint64(d.maxTableIndex()) {
 		return
 	}
-	if i <= uint64(len(staticTable)) {
+	if i <= uint64(len(staticTable)) {    // 61
+        //fmt.Println("vendor/golang.org/x/net/http2/hpack/hpack.go  at() staticTable[i] : ", i)
 		return staticTable[i-1], true
 	}
-	dents := d.dynTab.ents
+	dents := d.dynTab.ents               //dynamicTable   
+    //fmt.Println("vendor/golang.org/x/net/http2/hpack/hpack.go  at() dents : ", len(dents))
 	return dents[len(dents)-(int(i)-len(staticTable))], true
 }
 
@@ -265,13 +269,15 @@ func (d *Decoder) at(i uint64) (hf HeaderField, ok bool) {
 // TODO: remove this method and make it incremental later? This is
 // easier for debugging now.
 func (d *Decoder) DecodeFull(p []byte) ([]HeaderField, error) {
+    //fmt.Println("vendor/golang.org/x/net/http2/hpack/hpack.go  DecoderFull()")
 	var hf []HeaderField
 	saveFunc := d.emit
 	defer func() { d.emit = saveFunc }()
 	d.emit = func(f HeaderField) { hf = append(hf, f) }
-	if _, err := d.Write(p); err != nil {
-		return nil, err
-	}
+    //fmt.Println("vendor/golang.org/x/net/http2/hpack/hpack.go  DecoderFull() before d.Write")
+//	if _, err := d.Write(p); err != nil {
+//		return nil, err
+//	}
 	if err := d.Close(); err != nil {
 		return nil, err
 	}
@@ -287,6 +293,7 @@ func (d *Decoder) Close() error {
 }
 
 func (d *Decoder) Write(p []byte) (n int, err error) {
+    //fmt.Println("vendor/golang.org/x/net/http2/hpack/hpack.go  Decoder Write()")
 	if len(p) == 0 {
 		// Prevent state machine CPU attacks (making us redo
 		// work up to the point of finding out we don't have
@@ -296,6 +303,7 @@ func (d *Decoder) Write(p []byte) (n int, err error) {
 	// Only copy the data if we have to. Optimistically assume
 	// that p will contain a complete header block.
 	if d.saveBuf.Len() == 0 {
+        //fmt.Println("vendor/golang.org/x/net/http2/hpack/hpack.go  Decoder Write()  d.buf = p")
 		d.buf = p
 	} else {
 		d.saveBuf.Write(p)
@@ -304,8 +312,11 @@ func (d *Decoder) Write(p []byte) (n int, err error) {
 	}
 
 	for len(d.buf) > 0 {
+        //fmt.Println("vendor/golang.org/x/net/http2/hpack/hpack.go  Decoder Write() before parseHeaderFieldRepr")
 		err = d.parseHeaderFieldRepr()
+        //fmt.Println("vendor/golang.org/x/net/http2/hpack/hpack.go  Decoder Write() after parseHeaderFieldRepr")
 		if err == errNeedMore {
+            fmt.Println("vendor/golang.org/x/net/http2/hpack/hpack.go  Decoder Write() errNeedMore!!!")
 			// Extra paranoia, making sure saveBuf won't
 			// get too large.  All the varint and string
 			// reading code earlier should already catch
@@ -319,9 +330,11 @@ func (d *Decoder) Write(p []byte) (n int, err error) {
 			return len(p), nil
 		}
 		if err != nil {
+            fmt.Println("vendor/golang.org/x/net/http2/hpack/hpack.go  Decoder Write() is err & break loop!!!")
 			break
 		}
 	}
+    //fmt.Println("vendor/golang.org/x/net/http2/hpack/hpack.go  Decoder Write() end")
 	return len(p), err
 }
 
@@ -346,32 +359,40 @@ func (v indexType) sensitive() bool { return v == indexedNever }
 // consumes d.buf iff it returns nil.
 // precondition: must be called with len(d.buf) > 0
 func (d *Decoder) parseHeaderFieldRepr() error {
+    //fmt.Println("vendor/golang.org/x/net/http2/hpack/hpack.go  parseHeaderFieldRepr()")
 	b := d.buf[0]
+    //fmt.Println("vendor/golang.org/x/net/http2/hpack/hpack.go  parseHeaderFieldRepr() b :", b)
+    //fmt.Println("vendor/golang.org/x/net/http2/hpack/hpack.go  parseHeaderFieldRepr() buf :", d.buf)
 	switch {
 	case b&128 != 0:
 		// Indexed representation.
 		// High bit set?
 		// http://http2.github.io/http2-spec/compression.html#rfc.section.6.1
+        //fmt.Println("vendor/golang.org/x/net/http2/hpack/hpack.go  parseHeaderFieldRepr() case : 1280")
 		return d.parseFieldIndexed()
 	case b&192 == 64:
 		// 6.2.1 Literal Header Field with Incremental Indexing
 		// 0b10xxxxxx: top two bits are 10
 		// http://http2.github.io/http2-spec/compression.html#rfc.section.6.2.1
+        //fmt.Println("vendor/golang.org/x/net/http2/hpack/hpack.go  parseHeaderFieldRepr() case : 19264")
 		return d.parseFieldLiteral(6, indexedTrue)
 	case b&240 == 0:
 		// 6.2.2 Literal Header Field without Indexing
 		// 0b0000xxxx: top four bits are 0000
 		// http://http2.github.io/http2-spec/compression.html#rfc.section.6.2.2
+        //fmt.Println("vendor/golang.org/x/net/http2/hpack/hpack.go  parseHeaderFieldRepr() case : 2400")
 		return d.parseFieldLiteral(4, indexedFalse)
 	case b&240 == 16:
 		// 6.2.3 Literal Header Field never Indexed
 		// 0b0001xxxx: top four bits are 0001
 		// http://http2.github.io/http2-spec/compression.html#rfc.section.6.2.3
+        //fmt.Println("vendor/golang.org/x/net/http2/hpack/hpack.go  parseHeaderFieldRepr() case : 24016")
 		return d.parseFieldLiteral(4, indexedNever)
 	case b&224 == 32:
 		// 6.3 Dynamic Table Size Update
 		// Top three bits are '001'.
 		// http://http2.github.io/http2-spec/compression.html#rfc.section.6.3
+        //fmt.Println("vendor/golang.org/x/net/http2/hpack/hpack.go  parseHeaderFieldRepr() case : 22432")
 		return d.parseDynamicTableSizeUpdate()
 	}
 
@@ -380,11 +401,13 @@ func (d *Decoder) parseHeaderFieldRepr() error {
 
 // (same invariants and behavior as parseHeaderFieldRepr)
 func (d *Decoder) parseFieldIndexed() error {
+    //fmt.Println("vendor/golang.org/x/net/http2/hpack/hpack.go  parseFieldIndexed()")
 	buf := d.buf
 	idx, buf, err := readVarInt(7, buf)
 	if err != nil {
 		return err
 	}
+    //fmt.Println("vendor/golang.org/x/net/http2/hpack/hpack.go  parseFieldIndexed() before d.at()")
 	hf, ok := d.at(idx)
 	if !ok {
 		return DecodingError{InvalidIndexError(idx)}
@@ -395,32 +418,44 @@ func (d *Decoder) parseFieldIndexed() error {
 
 // (same invariants and behavior as parseHeaderFieldRepr)
 func (d *Decoder) parseFieldLiteral(n uint8, it indexType) error {
+    //fmt.Println("vendor/golang.org/x/net/http2/hpack/hpack.go  parseFieldLiteral()")
 	buf := d.buf
 	nameIdx, buf, err := readVarInt(n, buf)
 	if err != nil {
 		return err
 	}
+    //fmt.Println("vendor/golang.org/x/net/http2/hpack/hpack.go  parseFieldLiteral() n : ", n)
+    //fmt.Println("vendor/golang.org/x/net/http2/hpack/hpack.go  parseFieldLiteral() it : ", it)
+    //fmt.Println("vendor/golang.org/x/net/http2/hpack/hpack.go  parseFieldLiteral() nameIdx : ", nameIdx)
 
 	var hf HeaderField
 	wantStr := d.emitEnabled || it.indexed()
 	if nameIdx > 0 {
+        //fmt.Println("vendor/golang.org/x/net/http2/hpack/hpack.go  parseFieldLiteral() before d.at()")
 		ihf, ok := d.at(nameIdx)
 		if !ok {
 			return DecodingError{InvalidIndexError(nameIdx)}
 		}
 		hf.Name = ihf.Name
 	} else {
+        //fmt.Println("vendor/golang.org/x/net/http2/hpack/hpack.go  parseFieldLiteral() before d.at()")
 		hf.Name, buf, err = d.readString(buf, wantStr)
 		if err != nil {
 			return err
 		}
 	}
+    //fmt.Println("vendor/golang.org/x/net/http2/hpack/hpack.go  parseFieldLiteral() readString() hf.Name : ", hf.Name)
+    //fmt.Println("vendor/golang.org/x/net/http2/hpack/hpack.go  parseFieldLiteral() before readString wantStr : ", wantStr)
 	hf.Value, buf, err = d.readString(buf, wantStr)
+    //fmt.Println("vendor/golang.org/x/net/http2/hpack/hpack.go  parseFieldLiteral() after readString hf.Value : ", hf.Value)
 	if err != nil {
 		return err
 	}
 	d.buf = buf
 	if it.indexed() {
+        //fmt.Println("vendor/golang.org/x/net/http2/hpack/hpack.go  parseFieldLiteral() dynTab.add")
+        //fmt.Println("vendor/golang.org/x/net/http2/hpack/hpack.go  parseFieldLiteral() dynTab.add hf.Name : ", hf.Name)
+        //fmt.Println("vendor/golang.org/x/net/http2/hpack/hpack.go  parseFieldLiteral() dynTab.add hf.Value : ", hf.Value)
 		d.dynTab.add(hf)
 	}
 	hf.Sensitive = it.sensitive()
@@ -506,11 +541,14 @@ func readVarInt(n byte, p []byte) (i uint64, remain []byte, err error) {
 // is returning an error anyway, and because they're not indexed, the error
 // won't affect the decoding state.
 func (d *Decoder) readString(p []byte, wantStr bool) (s string, remain []byte, err error) {
+    //fmt.Println("vendor/golang.org/x/net/http2/hpack/hpack.go  readString()")
 	if len(p) == 0 {
 		return "", p, errNeedMore
 	}
 	isHuff := p[0]&128 != 0
+    //fmt.Println("vendor/golang.org/x/net/http2/hpack/hpack.go  readString() isHuff : ", isHuff)
 	strLen, p, err := readVarInt(7, p)
+    //fmt.Println("vendor/golang.org/x/net/http2/hpack/hpack.go  readString() strLen : ", strLen)
 	if err != nil {
 		return "", p, err
 	}
@@ -530,12 +568,15 @@ func (d *Decoder) readString(p []byte, wantStr bool) (s string, remain []byte, e
 	if wantStr {
 		buf := bufPool.Get().(*bytes.Buffer)
 		buf.Reset() // don't trust others
+        //fmt.Println("vendor/golang.org/x/net/http2/hpack/hpack.go  readString()  before huffmanDecode buf : ", buf)
 		defer bufPool.Put(buf)
 		if err := huffmanDecode(buf, d.maxStrLen, p[:strLen]); err != nil {
 			buf.Reset()
 			return "", nil, err
 		}
+        //fmt.Println("vendor/golang.org/x/net/http2/hpack/hpack.go  readString() after huffmanDecode buf : ", buf)
 		s = buf.String()
+        //fmt.Println("vendor/golang.org/x/net/http2/hpack/hpack.go  readString() s : ", s)
 		buf.Reset() // be nice to GC
 	}
 	return s, p[strLen:], nil

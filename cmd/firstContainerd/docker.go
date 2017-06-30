@@ -26,6 +26,7 @@ type daemonOptions struct {
 }
 
 func newDaemonCommand() *cobra.Command {
+    fmt.Println("cmd/firstContainerd/docker.go  newDaemonCommand()")
 	opts := daemonOptions{
 		daemonConfig: daemon.NewConfig(),
 		common:       cliflags.NewCommonOptions(),
@@ -91,6 +92,10 @@ func runDaemon(opts daemonOptions) error {
 func showVersion() {
 	fmt.Printf("Docker version %s, build %s\n", dockerversion.Version, dockerversion.GitCommit)
 }
+
+
+
+
 /*
 func main() {
 	if reexec.Init() {

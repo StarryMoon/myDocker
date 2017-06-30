@@ -67,7 +67,7 @@ type remote struct {
 
 // New creates a fresh instance of libcontainerd remote.
 func New(stateDir string, options ...RemoteOption) (_ Remote, err error) {
-    fmt.Println("libcontainered/remote_unix.go  New()")
+    //fmt.Println("libcontainerd/remote_unix.go  New()")
 	defer func() {
 		if err != nil {
 			err = fmt.Errorf("Failed to connect to containerd. Please make sure containerd is installed in your PATH or you have specified the correct address. Got error: %v", err)
@@ -275,7 +275,7 @@ func (r *remote) getLastEventTimestamp() time.Time {
 }
 
 func (r *remote) startEventsMonitor() error {
-    fmt.Println("libcontainered/remote_unix.go  startEventsMonitor()")
+    //fmt.Println("libcontainerd/remote_unix.go  startEventsMonitor()")
 	// First, get past events
 	t := r.getLastEventTimestamp()
 	tsp, err := ptypes.TimestampProto(t)
@@ -294,7 +294,7 @@ func (r *remote) startEventsMonitor() error {
 }
 
 func (r *remote) handleEventStream(events containerd.API_EventsClient) {
-    fmt.Println("libcontainered/remote_unix.go  start to handle event stream!!!")
+    //fmt.Println("libcontainerd/remote_unix.go  start to handle event stream!!!")
 	for {
         fmt.Println("libcontainerd/remote_unix.go  handleEventStream()")
 		e, err := events.Recv()
@@ -342,7 +342,7 @@ func (r *remote) handleEventStream(events containerd.API_EventsClient) {
         if flagErr != nil {
 			logrus.Errorf("libcontainerd: error processing state change for %s: %v", e.Id, err)
 		}
-        fmt.Println("libcontainered/remote_unix.go after handleEvent ()")
+        //fmt.Println("libcontainerd/remote_unix.go after handleEvent ()")
 
 		tsp, err := ptypes.Timestamp(e.Timestamp)
 		if err != nil {

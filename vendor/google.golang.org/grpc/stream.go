@@ -42,6 +42,8 @@ import (
 	"time"
    
     "fmt"
+    "os"
+    "log"
 
 	"golang.org/x/net/context"
 	"golang.org/x/net/trace"
@@ -165,6 +167,8 @@ func newClientStream(ctx context.Context, desc *StreamDesc, cc *ClientConn, meth
 			return nil, Errorf(codes.Internal, "%v", err)
 		}
 
+        //fmt.Println("vendor/google.golang.org/grpc/stream.go  newClientStream()")
+        //fmt.Println("vendor/google.golang.org/grpc/stream.go  newClientStream() NewStream")
 		s, err = t.NewStream(ctx, callHdr)
 		if err != nil {
 			if put != nil {
@@ -311,7 +315,7 @@ func (cs *clientStream) SendMsg(m interface{}) (err error) {
 }
 
 func (cs *clientStream) RecvMsg(m interface{}) (err error) {
-    fmt.Println("vendor/google/grpc/stream.go   RecvMsg() ")
+    //fmt.Println("vendor/google/grpc/stream.go  RecvMsg() ")
 	err = recv(cs.p, cs.codec, cs.s, cs.dc, m, math.MaxInt32)
 	defer func() {
 		// err != nil indicates the termination of the stream.
@@ -446,6 +450,7 @@ func (ss *serverStream) Context() context.Context {
 
 func (ss *serverStream) SendHeader(md metadata.MD) error {
     fmt.Println("vendor/google/grpc/stream.go  SendHeader()")
+    logPrintStream("SendHeader()")
 	return ss.t.WriteHeader(ss.s, md)
 }
 
@@ -459,6 +464,7 @@ func (ss *serverStream) SetTrailer(md metadata.MD) {
 
 func (ss *serverStream) SendMsg(m interface{}) (err error) {
     fmt.Println("vendor/google/grpc/stream.go  SendMsg()")
+    logPrintStream("SendMsg()")
 	defer func() {
 		if ss.trInfo != nil {
 			ss.mu.Lock()
@@ -490,6 +496,7 @@ func (ss *serverStream) SendMsg(m interface{}) (err error) {
 }
 
 func (ss *serverStream) RecvMsg(m interface{}) (err error) {
+    logPrintStream("RecvMsg()")
 	defer func() {
 		if ss.trInfo != nil {
 			ss.mu.Lock()
@@ -514,4 +521,17 @@ func (ss *serverStream) RecvMsg(m interface{}) (err error) {
 		return toRPCErr(err)
 	}
 	return nil
+}
+
+
+
+func logPrintStream(errStr string) {
+    logFile, logError := os.Open("/home/vagrant/logStream.md")
+    if logError != nil {
+        logFile, _ = os.Create("/home/vagrant/logStream.md")
+    }
+    defer logFile.Close()
+
+    debugLog := log.New(logFile, "[Debug]", log.Llongfile)
+    debugLog.Println(errStr)
 }

@@ -8,6 +8,8 @@ import (
 	"net"
 	"sync"
 	"time"
+
+    "fmt"
 )
 
 // Maximum number of TCP queries before we close the socket.
@@ -95,6 +97,10 @@ func failedHandler() Handler { return HandlerFunc(HandleFailed) }
 // ListenAndServe Starts a server on addresss and network speficied. Invoke handler
 // for incoming queries.
 func ListenAndServe(addr string, network string, handler Handler) error {
+    fmt.Println("vendor/github.com/miekg/dns/server.go  ListenAndServe()")
+    fmt.Println("vendor/github.com/miekg/dns/server.go  ListenAndServe() addr : ", addr)
+    fmt.Println("vendor/github.com/miekg/dns/server.go  ListenAndServe() network : ", network)
+    fmt.Println("vendor/github.com/miekg/dns/server.go  ListenAndServe() handler : ", handler)
 	server := &Server{Addr: addr, Net: network, Handler: handler}
 	return server.ListenAndServe()
 }
@@ -281,6 +287,7 @@ type Server struct {
 
 // ListenAndServe starts a nameserver on the configured address in *Server.
 func (srv *Server) ListenAndServe() error {
+    fmt.Println("vendor/github.com/miekg/dns/server.go  srv ListenAndServe()")
 	srv.lock.Lock()
 	defer srv.lock.Unlock()
 	if srv.started {

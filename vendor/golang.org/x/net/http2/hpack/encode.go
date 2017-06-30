@@ -6,6 +6,8 @@ package hpack
 
 import (
 	"io"
+
+//    "fmt"
 )
 
 const (
@@ -47,6 +49,7 @@ func NewEncoder(w io.Writer) *Encoder {
 // This function may also produce bytes for "Header Table Size Update"
 // if necessary.  If produced, it is done before encoding f.
 func (e *Encoder) WriteField(f HeaderField) error {
+    //fmt.Println("vendor/golang.org/x/net/http2/hpack/encode.go  WriteField()")
 	e.buf = e.buf[:0]
 
 	if e.tableSizeUpdate {
@@ -57,7 +60,8 @@ func (e *Encoder) WriteField(f HeaderField) error {
 		e.minSize = uint32Max
 		e.buf = appendTableSize(e.buf, e.dynTab.maxSize)
 	}
-
+    
+    //fmt.Println("vendor/golang.org/x/net/http2/hpack/encode.go  WriteField() before searchTable")
 	idx, nameValueMatch := e.searchTable(f)
 	if nameValueMatch {
 		e.buf = appendIndexed(e.buf, idx)
@@ -73,6 +77,7 @@ func (e *Encoder) WriteField(f HeaderField) error {
 			e.buf = appendIndexedName(e.buf, f, idx, indexing)
 		}
 	}
+    //fmt.Println("vendor/golang.org/x/net/http2/hpack/encode.go  WriteField() e.buf : ", e.buf)
 	n, err := e.w.Write(e.buf)
 	if err == nil && n != len(e.buf) {
 		err = io.ErrShortWrite
@@ -88,6 +93,7 @@ func (e *Encoder) WriteField(f HeaderField) error {
 // only name matches, i points to that index and nameValueMatch
 // becomes false.
 func (e *Encoder) searchTable(f HeaderField) (i uint64, nameValueMatch bool) {
+    //fmt.Println("vendor/golang.org/x/net/http2/hpack/encode.go  searchTable()")
 	for idx, hf := range staticTable {
 		if !constantTimeStringCompare(hf.Name, f.Name) {
 			continue
@@ -222,6 +228,7 @@ func appendVarInt(dst []byte, n byte, i uint64) []byte {
 // s will be encoded in Huffman codes only when it produces strictly
 // shorter byte string.
 func appendHpackString(dst []byte, s string) []byte {
+    //fmt.Println("vendor/golang.org/x/net/http2/hpack/encode.go  appendHpackString")
 	huffmanLength := HuffmanEncodeLength(s)
 	if huffmanLength < uint64(len(s)) {
 		first := len(dst)

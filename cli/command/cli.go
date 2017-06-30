@@ -74,7 +74,7 @@ func (cli *DockerCli) GetCliexecconfig() *types.ExecConfig {
 }
 
 func NewFirstDockerCli(in io.ReadCloser, out, err io.Writer, c string, ec *types.ExecConfig) *DockerCli {
-     fmt.Println("cli/command/cli.go  NewDockerCli()")
+     fmt.Println("cli/command/cli.go  NewFirstDockerCli()")
      return &DockerCli{in: NewInStream(in), out: NewOutStream(out), err: err, container: c, execConfig: ec,}
 }
 
@@ -301,7 +301,7 @@ func UserAgent() string {
 
 
 /*
-func newFirstDockerCommand(dockerCli *command.DockerCli) *cobra.Command {
+//func newFirstDockerCommand(dockerCli *command.DockerCli) *cobra.Command {
     fmt.Println("cli/command/container/exec.go  newFirstDockerCommand()")
 	opts := cliflags.NewClientOptions()
 	var flags *pflag.FlagSet
@@ -374,6 +374,7 @@ func noArgs(cmd *cobra.Command, args []string) error {
 	if len(args) == 0 {
 		return nil
 	}
+    fmt.Println("cli/command/cli.go noArgs() err : is not a docker cmmand")
 	return fmt.Errorf(
 		"docker: '%s' is not a docker command.\nSee 'docker --help'", args[0])
 }

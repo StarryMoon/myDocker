@@ -244,6 +244,12 @@ RUN ./contrib/download-frozen-image-v2.sh /docker-frozen-images \
 # Please edit hack/dockerfile/install-binaries.sh to update them.
 COPY hack/dockerfile/binaries-commits /tmp/binaries-commits
 COPY hack/dockerfile/install-binaries.sh /tmp/install-binaries.sh
+COPY mergeCode/containerd /tmp/containerd/
+COPY mergeCode/runc /tmp/runc/
+#COPY mergeCode/runc /tmp/toml/
+#COPY mergeCode/runc /tmp/vndr/
+#COPY mergeCode/runc /tmp/tini/
+#COPY mergeCode/runc /tmp/libnetwork/
 RUN /tmp/install-binaries.sh tomlv vndr runc containerd tini proxy
 
 # Wrap all commands in the "docker-in-docker" script to allow nested containers

@@ -159,10 +159,12 @@ func validContentType(t string) bool {
 }
 
 func (d *decodeState) processHeaderField(f hpack.HeaderField) {
+    //fmt.Println("vendor/google.golang.org/grpc/transport/http_util.go  processHeaderField() f.Name : ", f.Name)
 	switch f.Name {
 	case "content-type":
 		if !validContentType(f.Value) {
 			d.setErr(streamErrorf(codes.FailedPrecondition, "transport: received the unexpected content-type %q", f.Value))
+        //fmt.Println("vendor/google.golang.org/grpc/transport/http_util.go  processHeaderField() content-type err : ", f.Value)
 			return
 		}
 	case "grpc-encoding":
@@ -174,6 +176,9 @@ func (d *decodeState) processHeaderField(f hpack.HeaderField) {
 			return
 		}
 		d.statusCode = codes.Code(code)
+        if d.statusCode != 0 {
+        //fmt.Println("vendor/google.golang.org/grpc/transport/http_util.go  processHeaderField() grpc-status : ", d.statusCode)
+        }
 	case "grpc-message":
 		d.statusDesc = decodeGrpcMessage(f.Value)
 	case "grpc-timeout":
@@ -305,6 +310,7 @@ const (
 // When percent encoding, the byte is converted into hexadecimal notation
 // with a '%' prepended.
 func encodeGrpcMessage(msg string) string {
+    //fmt.Println("vendor/google.golang.org/grpc/transport/http_util.go  encodeGrpcMessage()")
 	if msg == "" {
 		return ""
 	}
@@ -334,6 +340,7 @@ func encodeGrpcMessageUnchecked(msg string) string {
 
 // decodeGrpcMessage decodes the msg encoded by encodeGrpcMessage.
 func decodeGrpcMessage(msg string) string {
+    //fmt.Println("vendor/google.golang.org/grpc/transport/http_util.go  decodeGrpcMessage()")
 	if msg == "" {
 		return ""
 	}
@@ -374,6 +381,7 @@ type framer struct {
 }
 
 func newFramer(conn net.Conn) *framer {
+    //fmt.Println("vendor/google.golang.org/grpc/transport/http_util.go  newFramer()")
 	f := &framer{
 		reader: bufio.NewReaderSize(conn, http2IOBufSize),
 		writer: bufio.NewWriterSize(conn, http2IOBufSize),
@@ -391,6 +399,7 @@ func (f *framer) adjustNumWriters(i int32) int32 {
 // unblocked from writableChan channel (i.e., owns the privilege to write).
 
 func (f *framer) writeContinuation(forceFlush bool, streamID uint32, endHeaders bool, headerBlockFragment []byte) error {
+    //fmt.Println("vendor/google.golang.org/grpc/transport/http_util.go  writeContinuation()")
 	if err := f.fr.WriteContinuation(streamID, endHeaders, headerBlockFragment); err != nil {
 		return err
 	}
@@ -401,6 +410,7 @@ func (f *framer) writeContinuation(forceFlush bool, streamID uint32, endHeaders 
 }
 
 func (f *framer) writeData(forceFlush bool, streamID uint32, endStream bool, data []byte) error {
+    //fmt.Println("vendor/google.golang.org/grpc/transport/http_util.go  writeData() : ", data)
 	if err := f.fr.WriteData(streamID, endStream, data); err != nil {
 		return err
 	}
@@ -411,6 +421,7 @@ func (f *framer) writeData(forceFlush bool, streamID uint32, endStream bool, dat
 }
 
 func (f *framer) writeGoAway(forceFlush bool, maxStreamID uint32, code http2.ErrCode, debugData []byte) error {
+    //fmt.Println("vendor/google.golang.org/grpc/transport/http_util.go  writeGoAway()")
 	if err := f.fr.WriteGoAway(maxStreamID, code, debugData); err != nil {
 		return err
 	}
@@ -421,6 +432,7 @@ func (f *framer) writeGoAway(forceFlush bool, maxStreamID uint32, code http2.Err
 }
 
 func (f *framer) writeHeaders(forceFlush bool, p http2.HeadersFrameParam) error {
+    //fmt.Println("vendor/google.golang.org/grpc/transport/http_util.go  writeHeaders() streamID : ", p.StreamID)
 	if err := f.fr.WriteHeaders(p); err != nil {
 		return err
 	}
@@ -431,6 +443,7 @@ func (f *framer) writeHeaders(forceFlush bool, p http2.HeadersFrameParam) error 
 }
 
 func (f *framer) writePing(forceFlush, ack bool, data [8]byte) error {
+    //fmt.Println("vendor/google.golang.org/grpc/transport/http_util.go  writePing()")
 	if err := f.fr.WritePing(ack, data); err != nil {
 		return err
 	}
@@ -441,6 +454,7 @@ func (f *framer) writePing(forceFlush, ack bool, data [8]byte) error {
 }
 
 func (f *framer) writePriority(forceFlush bool, streamID uint32, p http2.PriorityParam) error {
+    //fmt.Println("vendor/google.golang.org/grpc/transport/http_util.go  writePriority()")
 	if err := f.fr.WritePriority(streamID, p); err != nil {
 		return err
 	}
@@ -451,6 +465,7 @@ func (f *framer) writePriority(forceFlush bool, streamID uint32, p http2.Priorit
 }
 
 func (f *framer) writePushPromise(forceFlush bool, p http2.PushPromiseParam) error {
+    //fmt.Println("vendor/google.golang.org/grpc/transport/http_util.go  writePushPromise()")
 	if err := f.fr.WritePushPromise(p); err != nil {
 		return err
 	}
@@ -461,6 +476,7 @@ func (f *framer) writePushPromise(forceFlush bool, p http2.PushPromiseParam) err
 }
 
 func (f *framer) writeRSTStream(forceFlush bool, streamID uint32, code http2.ErrCode) error {
+    //fmt.Println("vendor/google.golang.org/grpc/transport/http_util.go  writeRSTStream()")
 	if err := f.fr.WriteRSTStream(streamID, code); err != nil {
 		return err
 	}
@@ -471,6 +487,7 @@ func (f *framer) writeRSTStream(forceFlush bool, streamID uint32, code http2.Err
 }
 
 func (f *framer) writeSettings(forceFlush bool, settings ...http2.Setting) error {
+    //fmt.Println("vendor/google.golang.org/grpc/transport/http_util.go  writeSettings()")
 	if err := f.fr.WriteSettings(settings...); err != nil {
 		return err
 	}
@@ -481,6 +498,7 @@ func (f *framer) writeSettings(forceFlush bool, settings ...http2.Setting) error
 }
 
 func (f *framer) writeSettingsAck(forceFlush bool) error {
+    //fmt.Println("vendor/google.golang.org/grpc/transport/http_util.go  writeSettingsAck()")
 	if err := f.fr.WriteSettingsAck(); err != nil {
 		return err
 	}
@@ -491,6 +509,7 @@ func (f *framer) writeSettingsAck(forceFlush bool) error {
 }
 
 func (f *framer) writeWindowUpdate(forceFlush bool, streamID, incr uint32) error {
+    //fmt.Println("vendor/google.golang.org/grpc/transport/http_util.go  writeWindowUpdate()")
 	if err := f.fr.WriteWindowUpdate(streamID, incr); err != nil {
 		return err
 	}
@@ -505,6 +524,8 @@ func (f *framer) flushWrite() error {
 }
 
 func (f *framer) readFrame() (http2.Frame, error) {
+    //fmt.Println("vendor/google.golang.org/grpc/transport/http_util.go  readFrame()")
+    //fmt.Println("vendor/google.golang.org/grpc/transport/http_util.go  readFrame() before ReadFrame")
 	return f.fr.ReadFrame()
 }
 

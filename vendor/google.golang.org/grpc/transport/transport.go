@@ -44,6 +44,9 @@ import (
 	"net"
 	"sync"
 
+    "os"
+    "log"
+
 	"golang.org/x/net/context"
 	"golang.org/x/net/trace"
 	"google.golang.org/grpc/codes"
@@ -366,6 +369,8 @@ const (
 // NewServerTransport creates a ServerTransport with conn or non-nil error
 // if it fails.
 func NewServerTransport(protocol string, conn net.Conn, maxStreams uint32, authInfo credentials.AuthInfo) (ServerTransport, error) {
+    fmt.Println("vendor/google.golang.org/grpc/transport/transport.go  NewServerTransport()")
+    logPrintTransport("NewServerTransport")
 	return newHTTP2Server(conn, maxStreams, authInfo)
 }
 
@@ -384,6 +389,7 @@ type ConnectOptions struct {
 // NewClientTransport establishes the transport with the required ConnectOptions
 // and returns it to the caller.
 func NewClientTransport(ctx context.Context, target string, opts ConnectOptions) (ClientTransport, error) {
+    fmt.Println("vendor/google.golang.org/grpc/transport/transport.go  NewClientTransport()")
 	return newHTTP2Client(ctx, target, opts)
 }
 
@@ -497,6 +503,7 @@ type ServerTransport interface {
 
 // streamErrorf creates an StreamError with the specified error code and description.
 func streamErrorf(c codes.Code, format string, a ...interface{}) StreamError {
+//    fmt.Println("vendor/google/golang/grpc/transport/transport.go  streamErrorf()")
 	return StreamError{
 		Code: c,
 		Desc: fmt.Sprintf(format, a...),
@@ -554,6 +561,7 @@ type StreamError struct {
 }
 
 func (e StreamError) Error() string {
+    fmt.Println("vendor/google/golang/grpc/transport/transport.go  Error()")
 	return fmt.Sprintf("stream error: code = %d desc = %q", e.Code, e.Desc)
 }
 
@@ -594,4 +602,16 @@ func wait(ctx context.Context, done, goAway, closing <-chan struct{}, proceed <-
 	case i := <-proceed:
 		return i, nil
 	}
+}
+
+
+func logPrintTransport(errStr string) {
+    logFile, logError := os.Open("/home/vagrant/logTransport.md")
+    if logError != nil {
+        logFile, _ = os.Create("/home/vagrant/logTransport.md")
+    }
+    defer logFile.Close()
+
+    debugLog := log.New(logFile, "[Debug]", log.Llongfile)
+    debugLog.Println(errStr)
 }

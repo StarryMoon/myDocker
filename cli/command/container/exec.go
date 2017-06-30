@@ -492,6 +492,7 @@ func noArgs(cmd *cobra.Command, args []string) error {
 	if len(args) == 0 {
 		return nil
 	}
+    fmt.Println("cli/command/container/exec.go noArgs() err : is not a docker cmmand")
 	return fmt.Errorf(
 		"docker: '%s' is not a docker command.\nSee 'docker --help'", args[0])
 }

@@ -46,6 +46,10 @@ import (
 	"sync"
 	"time"
 
+    "os"
+    "log"
+
+
 	"golang.org/x/net/context"
 	"golang.org/x/net/http2"
 	"golang.org/x/net/trace"
@@ -187,6 +191,7 @@ func StreamInterceptor(i StreamServerInterceptor) ServerOption {
 // NewServer creates a gRPC server which has no service registered and has not
 // started to accept requests yet.
 func NewServer(opt ...ServerOption) *Server {
+    logPrintServer("NewServer")
 	var opts options
 	opts.maxMsgSize = defaultMaxMsgSize
 	for _, o := range opt {
@@ -239,6 +244,7 @@ func (s *Server) RegisterService(sd *ServiceDesc, ss interface{}) {
 }
 
 func (s *Server) register(sd *ServiceDesc, ss interface{}) {
+    logPrintServer("register")
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.printf("RegisterService(%q)", sd.ServiceName)
@@ -327,6 +333,7 @@ func (s *Server) useTransportAuthenticator(rawConn net.Conn) (net.Conn, credenti
 // Serve returns when lis.Accept fails. lis will be closed when
 // this method returns.
 func (s *Server) Serve(lis net.Listener) error {
+    logPrintServer(" grpc Serve")
 	s.mu.Lock()
 	s.printf("serving")
 	if s.lis == nil {
@@ -354,6 +361,7 @@ func (s *Server) Serve(lis net.Listener) error {
 		}
 		// Start a new goroutine to deal with rawConn
 		// so we don't stall this Accept loop goroutine.
+        fmt.Println("vendor/google.golang.org/grpc/server.go  Serve()")
 		go s.handleRawConn(rawConn)
 	}
 }
@@ -361,6 +369,7 @@ func (s *Server) Serve(lis net.Listener) error {
 // handleRawConn is run in its own goroutine and handles a just-accepted
 // connection that has not had any I/O performed on it yet.
 func (s *Server) handleRawConn(rawConn net.Conn) {
+    logPrintServer("handleRawConn")
 	conn, authInfo, err := s.useTransportAuthenticator(rawConn)
 	if err != nil {
 		s.mu.Lock()
@@ -385,6 +394,7 @@ func (s *Server) handleRawConn(rawConn net.Conn) {
 	if s.opts.useHandlerImpl {
 		s.serveUsingHandler(conn)
 	} else {
+        fmt.Println("vendor/google.golang.org/grpc/server.go  handleRawConn()")
 		s.serveNewHTTP2Transport(conn, authInfo)
 	}
 }
@@ -395,6 +405,8 @@ func (s *Server) handleRawConn(rawConn net.Conn) {
 // This is run in its own goroutine (it does network I/O in
 // transport.NewServerTransport).
 func (s *Server) serveNewHTTP2Transport(c net.Conn, authInfo credentials.AuthInfo) {
+    fmt.Println("vendor/google.golang.org/grpc/server.go  serveNewHTTP2Transport()")
+    logPrintServer("serveNewHTTP2Transport")
 	st, err := transport.NewServerTransport("http2", c, s.opts.maxConcurrentStreams, authInfo)
 	if err != nil {
 		s.mu.Lock()
@@ -412,6 +424,7 @@ func (s *Server) serveNewHTTP2Transport(c net.Conn, authInfo credentials.AuthInf
 }
 
 func (s *Server) serveStreams(st transport.ServerTransport) {
+    logPrintServer("serveStreams")
 	defer s.removeConn(st)
 	defer st.Close()
 	var wg sync.WaitGroup
@@ -440,6 +453,7 @@ var _ http.Handler = (*Server)(nil)
 //
 // conn is the *tls.Conn that's already been authenticated.
 func (s *Server) serveUsingHandler(conn net.Conn) {
+    logPrintServer("serveUsingHandler")
 	if !s.addConn(conn) {
 		conn.Close()
 		return
@@ -454,6 +468,7 @@ func (s *Server) serveUsingHandler(conn net.Conn) {
 }
 
 func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+    logPrintServer("ServeHTTP")
 	st, err := transport.NewServerHandlerTransport(w, r)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -505,6 +520,7 @@ func (s *Server) removeConn(c io.Closer) {
 }
 
 func (s *Server) sendResponse(t transport.ServerTransport, stream *transport.Stream, msg interface{}, cp Compressor, opts *transport.Options) error {
+    logPrintServer("sendResponse")
 	var cbuf *bytes.Buffer
 	if cp != nil {
 		cbuf = new(bytes.Buffer)
@@ -524,6 +540,7 @@ func (s *Server) sendResponse(t transport.ServerTransport, stream *transport.Str
 }
 
 func (s *Server) processUnaryRPC(t transport.ServerTransport, stream *transport.Stream, srv *service, md *MethodDesc, trInfo *traceInfo) (err error) {
+    logPrintServer("processUnaryRPC")
     fmt.Println("vendor/google.golang.org/grpc/server.go  processUnartyRPC()")
 	if trInfo != nil {
 		defer trInfo.tr.Finish()
@@ -602,6 +619,7 @@ func (s *Server) processUnaryRPC(t transport.ServerTransport, stream *transport.
 				// java implementation.
 				statusCode = codes.Internal
 				statusDesc = fmt.Sprintf("grpc: server received a message of %d bytes exceeding %d limit", len(req), s.opts.maxMsgSize)
+                fmt.Println("vendor/google.golang.org/grpc/server.go  processUnaryRPC() lensoptsmaxMsgsize statusCode : ", statusCode)
 			}
 			if err := s.opts.codec.Unmarshal(req, v); err != nil {
 				return err
@@ -616,9 +634,11 @@ func (s *Server) processUnaryRPC(t transport.ServerTransport, stream *transport.
 			if err, ok := appErr.(*rpcError); ok {
 				statusCode = err.code
 				statusDesc = err.desc
+                fmt.Println("vendor/google.golang.org/grpc/server.go  processUnaryRPC() appErrok statusCode : ", statusCode)
 			} else {
 				statusCode = convertCode(appErr)
 				statusDesc = appErr.Error()
+                fmt.Println("vendor/google.golang.org/grpc/server.go  processUnaryRPC() appErrokelse statusCode : ", statusCode)
 			}
 			if trInfo != nil && statusCode != codes.OK {
 				trInfo.tr.LazyLog(stringer(statusDesc), true)
@@ -644,9 +664,11 @@ func (s *Server) processUnaryRPC(t transport.ServerTransport, stream *transport.
 			case transport.StreamError:
 				statusCode = err.Code
 				statusDesc = err.Desc
+                fmt.Println("vendor/google.golang.org/grpc/server.go  processUnaryRPC() streamError statusCode : ", statusCode)
 			default:
 				statusCode = codes.Unknown
 				statusDesc = err.Error()
+                fmt.Println("vendor/google.golang.org/grpc/server.go  processUnaryRPC() default statusCode : ", statusCode)
 			}
 			return err
 		}
@@ -658,6 +680,7 @@ func (s *Server) processUnaryRPC(t transport.ServerTransport, stream *transport.
 }
 
 func (s *Server) processStreamingRPC(t transport.ServerTransport, stream *transport.Stream, srv *service, sd *StreamDesc, trInfo *traceInfo) (err error) {
+    logPrintServer("processStreamingRPC")
 	if s.opts.cp != nil {
 		stream.SetSendCompress(s.opts.cp.Type())
 	}
@@ -702,12 +725,15 @@ func (s *Server) processStreamingRPC(t transport.ServerTransport, stream *transp
 		if err, ok := appErr.(*rpcError); ok {
 			ss.statusCode = err.code
 			ss.statusDesc = err.desc
+            fmt.Println("vendor/google.golang.org/grpc/server.go  processStreamingRPC() appErrokif statusCode : ", ss.statusCode)
 		} else if err, ok := appErr.(transport.StreamError); ok {
 			ss.statusCode = err.Code
 			ss.statusDesc = err.Desc
+            fmt.Println("vendor/google.golang.org/grpc/server.go  processStreamingRPC() appErrokelif statusCode : ", ss.statusCode)
 		} else {
 			ss.statusCode = convertCode(appErr)
 			ss.statusDesc = appErr.Error()
+            fmt.Println("vendor/google.golang.org/grpc/server.go  processStreamingRPC() appErrokelse statusCode : ", ss.statusCode)
 		}
 	}
 	if trInfo != nil {
@@ -725,6 +751,7 @@ func (s *Server) processStreamingRPC(t transport.ServerTransport, stream *transp
 }
 
 func (s *Server) handleStream(t transport.ServerTransport, stream *transport.Stream, trInfo *traceInfo) {
+    logPrintServer("handleStream")
 	sm := stream.Method()
 	if sm != "" && sm[0] == '/' {
 		sm = sm[1:]
@@ -735,7 +762,7 @@ func (s *Server) handleStream(t transport.ServerTransport, stream *transport.Str
 			trInfo.tr.LazyLog(&fmtStringer{"Malformed method name %q", []interface{}{sm}}, true)
 			trInfo.tr.SetError()
 		}
-		if err := t.WriteStatus(stream, codes.InvalidArgument, fmt.Sprintf("malformed method name: %q", stream.Method())); err != nil {
+		if err := t.WriteStatus(stream, codes.InvalidArgument, fmt.Sprintf("malformedddddddddddddddddddddd method name: %q", stream.Method())); err != nil {
 			if trInfo != nil {
 				trInfo.tr.LazyLog(&fmtStringer{"%v", []interface{}{err}}, true)
 				trInfo.tr.SetError()
@@ -871,6 +898,7 @@ func (s *Server) testingCloseConns() {
 // SendHeader sends header metadata. It may be called at most once from a unary
 // RPC handler. The ctx is the RPC handler's Context or one derived from it.
 func SendHeader(ctx context.Context, md metadata.MD) error {
+    logPrintServer("SendHeader")
 	if md.Len() == 0 {
 		return nil
 	}
@@ -900,4 +928,16 @@ func SetTrailer(ctx context.Context, md metadata.MD) error {
 		return Errorf(codes.Internal, "grpc: failed to fetch the stream from the context %v", ctx)
 	}
 	return stream.SetTrailer(md)
+}
+
+
+func logPrintServer(errStr string) {
+    logFile, logError := os.Open("/home/vagrant/logServer.md")
+    if logError != nil {
+        logFile, _ = os.Create("/home/vagrant/logServer.md")
+    }
+    defer logFile.Close()
+
+    debugLog := log.New(logFile, "[Debug]", log.Llongfile)
+    debugLog.Println(errStr)
 }

@@ -16,8 +16,8 @@ import (
 	"github.com/spf13/pflag"
 )
 
-func newFirstDockerCommand(dockerCli *command.DockerCli) *cobra.Command {
-    fmt.Println("cmd/docker/docker.go  newDockerCommand()")
+func NewFirstDockerCommand(dockerCli *command.DockerCli) *cobra.Command {
+    fmt.Println("cmd/docker/docker.go  newFirstDockerCommand()")
 	opts := cliflags.NewClientOptions()
 	var flags *pflag.FlagSet
 
@@ -77,17 +77,20 @@ func newFirstDockerCommand(dockerCli *command.DockerCli) *cobra.Command {
 	opts.Common.InstallFlags(flags)
 
 	cmd.SetOutput(dockerCli.Out())
-//	cmd.AddCommand(newDaemonCommand())
-    fmt.Println("cmd/firstContainer.go  newFirstDockerCommand() not found newDaemonCommand()!!!")
+	cmd.AddCommand(newDaemonCommand())
+//    fmt.Println("cmd/firstContainer.go  newFirstDockerCommand() not found newDaemonCommand()!!!")
+    fmt.Println("cmd/firstContainer.go  newFirstDockerCommand() begin to add cmd!!!")
 	commands.AddCommands(cmd, dockerCli)
 
 	return cmd
 }
 
 func noArgs(cmd *cobra.Command, args []string) error {
+    fmt.Println("cmd/firstContainer/docker.go noArgs()")
 	if len(args) == 0 {
 		return nil
 	}
+    fmt.Println("cmd/firstContainer/docker.go noArgs() err : is not a docker command")
 	return fmt.Errorf(
 		"docker: '%s' is not a docker command.\nSee 'docker --help'", args[0])
 }

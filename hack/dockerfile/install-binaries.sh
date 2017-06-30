@@ -20,18 +20,22 @@ RUNC_BUILDTAGS="${RUNC_BUILDTAGS:-"seccomp apparmor selinux"}"
 
 install_runc() {
 	echo "Install runc version $RUNC_COMMIT"
-	git clone https://github.com/docker/runc.git "$GOPATH/src/github.com/opencontainers/runc"
+	#git clone https://github.com/docker/runc.git "$GOPATH/src/github.com/opencontainers/runc"
+    mkdir -p "$GOPATH/src/github.com/opencontainers" 
+    mv /tmp/runc/ "$GOPATH/src/github.com/opencontainers"
 	cd "$GOPATH/src/github.com/opencontainers/runc"
-	git checkout -q "$RUNC_COMMIT"
+	#git checkout -q "$RUNC_COMMIT"
 	make BUILDTAGS="$RUNC_BUILDTAGS" $1
 	cp runc /usr/local/bin/docker-runc
 }
 
 install_containerd() {
 	echo "Install containerd version $CONTAINERD_COMMIT"
-	git clone https://github.com/docker/containerd.git "$GOPATH/src/github.com/docker/containerd"
+	#git clone https://github.com/docker/containerd.git "$GOPATH/src/github.com/docker/containerd"
+    mkdir -p "$GOPATH/src/github.com/docker"
+    mv /tmp/containerd/ "$GOPATH/src/github.com/docker"
 	cd "$GOPATH/src/github.com/docker/containerd"
-	git checkout -q "$CONTAINERD_COMMIT"
+	#git checkout -q "$CONTAINERD_COMMIT"
 	make $1
 	cp bin/containerd /usr/local/bin/docker-containerd
 	cp bin/containerd-shim /usr/local/bin/docker-containerd-shim
@@ -41,7 +45,9 @@ install_containerd() {
 install_proxy() {
 	echo "Install docker-proxy version $LIBNETWORK_COMMIT"
 	git clone https://github.com/docker/libnetwork.git "$GOPATH/src/github.com/docker/libnetwork"
-	cd "$GOPATH/src/github.com/docker/libnetwork"
+	#mkdir -p "$GOPATH/src/github.com/docker"
+    #mv /tmp/libnetwork/ "$GOPATH/src/github.com/docker"
+    cd "$GOPATH/src/github.com/docker/libnetwork"
 	git checkout -q "$LIBNETWORK_COMMIT"
 	go build -ldflags="$PROXY_LDFLAGS" -o /usr/local/bin/docker-proxy github.com/docker/libnetwork/cmd/proxy
 }
@@ -52,8 +58,11 @@ do
 		tomlv)
 			echo "Install tomlv version $TOMLV_COMMIT"
 			git clone https://github.com/BurntSushi/toml.git "$GOPATH/src/github.com/BurntSushi/toml"
-			cd "$GOPATH/src/github.com/BurntSushi/toml" && git checkout -q "$TOMLV_COMMIT"
-			go build -v -o /usr/local/bin/tomlv github.com/BurntSushi/toml/cmd/tomlv
+			#mkdir -p "$GOPATH/src/github.com/BurntSushi"
+            #mv /tmp/toml/ "$GOPATH/src/github.com/BurntSushi"
+            cd "$GOPATH/src/github.com/BurntSushi/toml" && git checkout -q "$TOMLV_COMMIT"
+			#cd "$GOPATH/src/github.com/BurntSushi/toml"
+            go build -v -o /usr/local/bin/tomlv github.com/BurntSushi/toml/cmd/tomlv
 			;;
 
 		runc)
@@ -75,7 +84,8 @@ do
 		tini)
 			echo "Install tini version $TINI_COMMIT"
 			git clone https://github.com/krallin/tini.git "$GOPATH/tini"
-			cd "$GOPATH/tini"
+            #mv /tmp/tini/ "$GOPATH"
+            cd "$GOPATH/tini"
 			git checkout -q "$TINI_COMMIT"
 			cmake -DMINIMAL=ON .
 			make tini-static
@@ -94,7 +104,9 @@ do
 		vndr)
 			echo "Install vndr version $VNDR_COMMIT"
 			git clone https://github.com/LK4D4/vndr.git "$GOPATH/src/github.com/LK4D4/vndr"
-			cd "$GOPATH/src/github.com/LK4D4/vndr"
+			#mkdir -p "$GOPATH/src/github.com/LK4D4"
+            #mv /tmp/vndr/ "$GOPATH/src/github.com/LK4D4"
+            cd "$GOPATH/src/github.com/LK4D4/vndr"
 			git checkout -q "$VNDR_COMMIT"
 			go build -v -o /usr/local/bin/vndr .
 			;;

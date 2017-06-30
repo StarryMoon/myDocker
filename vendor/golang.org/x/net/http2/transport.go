@@ -379,6 +379,7 @@ func (t *Transport) disableKeepAlives() bool {
 }
 
 func (t *Transport) NewClientConn(c net.Conn) (*ClientConn, error) {
+    fmt.Println("vendor/golang.org/x/net/http2/transport.go  NewClientConn()")
 	if VerboseLogs {
 		t.vlogf("http2: Transport creating client conn to %v", c.RemoteAddr())
 	}
@@ -433,6 +434,7 @@ func (t *Transport) NewClientConn(c net.Conn) (*ClientConn, error) {
 	}
 
 	// Read the obligatory SETTINGS frame
+    fmt.Println("vendor/golang.org/x/net/http2/transport.go  NewClientConn() before ReadFrame")
 	f, err := cc.fr.ReadFrame()
 	if err != nil {
 		return nil, err
@@ -653,6 +655,7 @@ func (cc *ClientConn) RoundTrip(req *http.Request) (*http.Response, error) {
 	hdrs := cc.encodeHeaders(req, cs.requestedGzip, trailers, contentLen)
 	cc.wmu.Lock()
 	endStream := !hasBody && !hasTrailers
+    fmt.Println("vendor/golang.org/x/net/http2/transport.go  RoundTrip()")
 	werr := cc.writeHeaders(cs.ID, endStream, hdrs)
 	cc.wmu.Unlock()
 	cc.mu.Unlock()
@@ -746,6 +749,7 @@ func (cc *ClientConn) RoundTrip(req *http.Request) (*http.Response, error) {
 
 // requires cc.wmu be held
 func (cc *ClientConn) writeHeaders(streamID uint32, endStream bool, hdrs []byte) error {
+    fmt.Println("vendor/golang.org/x/net/http2/transport.go  writeHeaders()")
 	first := true // first frame written (HEADERS is first, then CONTINUATION)
 	frameSize := int(cc.maxFrameSize)
 	for len(hdrs) > 0 && cc.werr == nil {
@@ -859,6 +863,7 @@ func (cs *clientStream) writeRequestBody(body io.Reader, bodyCloser io.Closer) (
 		// Avoid forgetting to send an END_STREAM if the encoded
 		// trailers are 0 bytes. Both results produce and END_STREAM.
 		if len(trls) > 0 {
+    fmt.Println("vendor/golang.org/x/net/http2/transport.go  writeRequestBody()")
 			err = cc.writeHeaders(cs.ID, true, trls)
 		} else {
 			err = cc.fr.WriteData(cs.ID, true, nil)
@@ -1021,6 +1026,7 @@ func (cc *ClientConn) writeHeader(name, value string) {
 	if VerboseLogs {
 		log.Printf("http2: Transport encoding header %q = %q", name, value)
 	}
+    fmt.Println("vendor/golang.org/x/net/http2/transport.go  writeHeader()")
 	cc.henc.WriteField(hpack.HeaderField{Name: name, Value: value})
 }
 
@@ -1115,10 +1121,12 @@ func (rl *clientConnReadLoop) cleanup() {
 }
 
 func (rl *clientConnReadLoop) run() error {
+    fmt.Println("vendor/golang.org/x/net/http2/transport.go  run()")
 	cc := rl.cc
 	rl.closeWhenIdle = cc.t.disableKeepAlives()
 	gotReply := false // ever saw a reply
 	for {
+        fmt.Println("vendor/golang.org/x/net/http2/transport.go  run() before ReadFrame")
 		f, err := cc.fr.ReadFrame()
 		if err != nil {
 			cc.vlogf("Transport readFrame error: (%T) %v", err, err)

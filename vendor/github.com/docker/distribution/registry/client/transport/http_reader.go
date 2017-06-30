@@ -62,6 +62,7 @@ type httpReadSeeker struct {
 }
 
 func (hrs *httpReadSeeker) Read(p []byte) (n int, err error) {
+    fmt.Println("vendor/github.com/docker/distribution/registry/client/transport/http_reader.go  Read()")
 	if hrs.err != nil {
 		return 0, hrs.err
 	}

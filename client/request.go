@@ -179,6 +179,7 @@ func (cli *Client) doRequest(ctx context.Context, req *http.Request) (serverResp
 
 	if resp != nil {
 		serverResp.statusCode = resp.StatusCode
+        fmt.Println("client/request.go  doRequest() serverResp.statusCode : ", serverResp.statusCode)
 	}
 
 	if serverResp.statusCode < 200 || serverResp.statusCode >= 400 {

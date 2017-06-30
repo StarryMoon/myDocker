@@ -228,22 +228,27 @@ var fhBytes = sync.Pool{
 // Most users should use Framer.ReadFrame instead.
 func ReadFrameHeader(r io.Reader) (FrameHeader, error) {
 	bufp := fhBytes.Get().(*[]byte)
+    //fmt.Println("vendor/golang.org/x/net/http2/frame.go  ReadFrameHeader bufp : ", bufp)
 	defer fhBytes.Put(bufp)
 	return readFrameHeader(*bufp, r)
 }
 
 func readFrameHeader(buf []byte, r io.Reader) (FrameHeader, error) {
+    //fmt.Println("vendor/golang.org/x/net/http2/frame.go  readFrameHeader()")
 	_, err := io.ReadFull(r, buf[:frameHeaderLen])
 	if err != nil {
 		return FrameHeader{}, err
 	}
-	return FrameHeader{
+    //fmt.Println("vendor/golang.org/x/net/http2/frame.go  readFrameHeader buf : ", buf)
+    tmpFrameHeader := FrameHeader{
 		Length:   (uint32(buf[0])<<16 | uint32(buf[1])<<8 | uint32(buf[2])),
 		Type:     FrameType(buf[3]),
 		Flags:    Flags(buf[4]),
 		StreamID: binary.BigEndian.Uint32(buf[5:]) & (1<<31 - 1),
 		valid:    true,
-	}, nil
+	}
+    //fmt.Println("vendor/golang.org/x/net/http2/frame.go  readFrameHeader tmpFrameHeader : ", tmpFrameHeader)
+    return tmpFrameHeader, nil
 }
 
 // A Frame is the base interface implemented by all frame types.
@@ -330,6 +335,7 @@ func (fr *Framer) maxHeaderListSize() uint32 {
 }
 
 func (f *Framer) startWrite(ftype FrameType, flags Flags, streamID uint32) {
+    //fmt.Println("vendor/golang.org/x/net/http2/frame.go  startWrite()")
 	// Write the FrameHeader.
 	f.wbuf = append(f.wbuf[:0],
 		0, // 3 bytes of length, filled in in endWrite
@@ -346,6 +352,7 @@ func (f *Framer) startWrite(ftype FrameType, flags Flags, streamID uint32) {
 func (f *Framer) endWrite() error {
 	// Now that we know the final size, fill in the FrameHeader in
 	// the space previously reserved for it. Abuse append.
+    //fmt.Println("vendor/golang.org/x/net/http2/frame.go  endWrite()")
 	length := len(f.wbuf) - frameHeaderLen
 	if length >= (1 << 24) {
 		return ErrFrameTooLarge
@@ -358,10 +365,12 @@ func (f *Framer) endWrite() error {
 		f.logWrite()
 	}
 
+    //fmt.Println("vendor/golang.org/x/net/http2/frame.go  endWrite() before write f.wbuf")
 	n, err := f.w.Write(f.wbuf)
 	if err == nil && n != len(f.wbuf) {
 		err = io.ErrShortWrite
 	}
+    //fmt.Println("vendor/golang.org/x/net/http2/frame.go  endWrite() end")
 	return err
 }
 
@@ -375,6 +384,7 @@ func (f *Framer) logWrite() {
 		f.debugFramer.AllowIllegalReads = true
 	}
 	f.debugFramerBuf.Write(f.wbuf)
+    //fmt.Println("vendor/golang.org/x/net/http2/frame.go  logWrite()")
 	fr, err := f.debugFramer.ReadFrame()
 	if err != nil {
 		log.Printf("http2: Framer %p: failed to decode just-written frame", f)
@@ -456,37 +466,52 @@ func terminalReadFrameError(err error) bool {
 // ConnectionError, StreamError, or anything else from from the underlying
 // reader.
 func (fr *Framer) ReadFrame() (Frame, error) {
+    //fmt.Println("vendor/golang.org/x/net/http2/frame.go  ReadFrame()")
 	fr.errDetail = nil
 	if fr.lastFrame != nil {
 		fr.lastFrame.invalidate()
 	}
+    //fmt.Println("vendor/golang.org/x/net/http2/frame.go  ReadFrame() before readFrameHeader")
 	fh, err := readFrameHeader(fr.headerBuf[:], fr.r)
+    //fmt.Println("vendor/golang.org/x/net/http2/frame.go  ReadFrame() after readFrameHeader")
+    //fmt.Println("vendor/golang.org/x/net/http2/frame.go  ReadFrame() after readFrameHeader frame : ", fh)
 	if err != nil {
+        fmt.Println("vendor/golang.org/x/net/http2/frame.go  ReadFrame() readFrameHeader is err!!!")
 		return nil, err
 	}
 	if fh.Length > fr.maxReadSize {
+        fmt.Println("vendor/golang.org/x/net/http2/frame.go  ReadFrame() length is err!!!")
 		return nil, ErrFrameTooLarge
 	}
 	payload := fr.getReadBuf(fh.Length)
 	if _, err := io.ReadFull(fr.r, payload); err != nil {
+        fmt.Println("vendor/golang.org/x/net/http2/frame.go  ReadFrame() readfull is err!!!")
 		return nil, err
 	}
+    //fmt.Println("vendor/golang.org/x/net/http2/frame.go  ReadFrame() before typeFrameParser")
+    //fmt.Println("vendor/golang.org/x/net/http2/frame.go  ReadFrame() before typeFrameParser frame : ", fh)
 	f, err := typeFrameParser(fh.Type)(fh, payload)
+    //fmt.Println("vendor/golang.org/x/net/http2/frame.go  ReadFrame() after typeFrameParser")
 	if err != nil {
 		if ce, ok := err.(connError); ok {
+            fmt.Println("vendor/golang.org/x/net/http2/frame.go  ReadFrame() connerror is err!!!")
 			return nil, fr.connError(ce.Code, ce.Reason)
 		}
+            fmt.Println("vendor/golang.org/x/net/http2/frame.go  ReadFrame() parser is err!!!")
 		return nil, err
 	}
 	if err := fr.checkFrameOrder(f); err != nil {
+        fmt.Println("vendor/golang.org/x/net/http2/frame.go  ReadFrame() checkorder is err!!!")
 		return nil, err
 	}
 	if fr.logReads {
 		log.Printf("http2: Framer %p: read %v", fr, summarizeFrame(f))
 	}
 	if fh.Type == FrameHeaders && fr.ReadMetaHeaders != nil {
+        //fmt.Println("vendor/golang.org/x/net/http2/frame.go  ReadFrame() if before readMetaFrame")
 		return fr.readMetaFrame(f.(*HeadersFrame))
 	}
+    //fmt.Println("vendor/golang.org/x/net/http2/frame.go  ReadFrame() end")
 	return f, nil
 }
 
@@ -601,6 +626,7 @@ func validStreamID(streamID uint32) bool {
 // It will perform exactly one Write to the underlying Writer.
 // It is the caller's responsibility to not call other Write methods concurrently.
 func (f *Framer) WriteData(streamID uint32, endStream bool, data []byte) error {
+    //fmt.Println("vendor/golang.org/x/net/http2/frame.go  WriteData()")
 	// TODO: ignoring padding for now. will add when somebody cares.
 	if !validStreamID(streamID) && !f.AllowIllegalWrites {
 		return errStreamID
@@ -609,8 +635,10 @@ func (f *Framer) WriteData(streamID uint32, endStream bool, data []byte) error {
 	if endStream {
 		flags |= FlagDataEndStream
 	}
+    //fmt.Println("vendor/golang.org/x/net/http2/frame.go  WriteData() before startWrite")
 	f.startWrite(FrameData, flags, streamID)
 	f.wbuf = append(f.wbuf, data...)
+    //fmt.Println("vendor/golang.org/x/net/http2/frame.go  WriteData() before endWrite")
 	return f.endWrite()
 }
 
@@ -866,6 +894,7 @@ type HeadersFrame struct {
 }
 
 func (f *HeadersFrame) HeaderBlockFragment() []byte {
+    //fmt.Println("vendor/golang.org/x/net/http2/frame.go  HeaderBlockFragment() HeadersFrame")
 	f.checkValid()
 	return f.headerFragBuf
 }
@@ -883,6 +912,7 @@ func (f *HeadersFrame) HasPriority() bool {
 }
 
 func parseHeadersFrame(fh FrameHeader, p []byte) (_ Frame, err error) {
+    //fmt.Println("vendor/golang.org/x/net/http2/frame.go  parseHeadersFrame()")
 	hf := &HeadersFrame{
 		FrameHeader: fh,
 	}
@@ -916,6 +946,8 @@ func parseHeadersFrame(fh FrameHeader, p []byte) (_ Frame, err error) {
 		return nil, StreamError{fh.StreamID, ErrCodeProtocol}
 	}
 	hf.headerFragBuf = p[:len(p)-int(padLength)]
+    //fmt.Println("vendor/golang.org/x/net/http2/frame.go  parseHeadersFrame() hf : ", hf)
+    //fmt.Println("vendor/golang.org/x/net/http2/frame.go  parseHeadersFrame() end")
 	return hf, nil
 }
 
@@ -955,6 +987,7 @@ type HeadersFrameParam struct {
 // It will perform exactly one Write to the underlying Writer.
 // It is the caller's responsibility to not call other Write methods concurrently.
 func (f *Framer) WriteHeaders(p HeadersFrameParam) error {
+    //fmt.Println("vendor/golang.org/x/net/http2/frame.go  WriteHeaders()")
 	if !validStreamID(p.StreamID) && !f.AllowIllegalWrites {
 		return errStreamID
 	}
@@ -988,6 +1021,7 @@ func (f *Framer) WriteHeaders(p HeadersFrameParam) error {
 	}
 	f.wbuf = append(f.wbuf, p.BlockFragment...)
 	f.wbuf = append(f.wbuf, padZeros[:p.PadLength]...)
+    //fmt.Println("vendor/golang.org/x/net/http2/frame.go  WriteHeaders() before endWrite")
 	return f.endWrite()
 }
 
@@ -1064,12 +1098,14 @@ type RSTStreamFrame struct {
 }
 
 func parseRSTStreamFrame(fh FrameHeader, p []byte) (Frame, error) {
+    //fmt.Println("vendor/golang.org/x/net/http2/frame.go  parseRSTStreamFrame()")
 	if len(p) != 4 {
 		return nil, ConnectionError(ErrCodeFrameSize)
 	}
 	if fh.StreamID == 0 {
 		return nil, ConnectionError(ErrCodeProtocol)
 	}
+    //fmt.Println("vendor/golang.org/x/net/http2/frame.go  parseRSTStreamFrame() return RSTStreamFrame")
 	return &RSTStreamFrame{fh, ErrCode(binary.BigEndian.Uint32(p[:4]))}, nil
 }
 
@@ -1078,11 +1114,13 @@ func parseRSTStreamFrame(fh FrameHeader, p []byte) (Frame, error) {
 // It will perform exactly one Write to the underlying Writer.
 // It is the caller's responsibility to not call other Write methods concurrently.
 func (f *Framer) WriteRSTStream(streamID uint32, code ErrCode) error {
+    //fmt.Println("vendor/golang.org/x/net/http2/frame.go WriteRSTStream()")
 	if !validStreamID(streamID) && !f.AllowIllegalWrites {
 		return errStreamID
 	}
 	f.startWrite(FrameRSTStream, 0, streamID)
 	f.writeUint32(uint32(code))
+    //fmt.Println("vendor/golang.org/x/net/http2/frame.go WriteRSTStream() before endWrite")
 	return f.endWrite()
 }
 
@@ -1101,6 +1139,7 @@ func parseContinuationFrame(fh FrameHeader, p []byte) (Frame, error) {
 }
 
 func (f *ContinuationFrame) HeaderBlockFragment() []byte {
+    //fmt.Println("vendor/golang.org/x/net/http2/frame.go  HeaderBlockFragment() HeaderBlockFragment")
 	f.checkValid()
 	return f.headerFragBuf
 }
@@ -1135,6 +1174,7 @@ type PushPromiseFrame struct {
 }
 
 func (f *PushPromiseFrame) HeaderBlockFragment() []byte {
+    //fmt.Println("vendor/golang.org/x/net/http2/frame.go  HeaderBlockFragment() PushPromiseFrame")
 	f.checkValid()
 	return f.headerFragBuf
 }
@@ -1371,6 +1411,7 @@ func (fr *Framer) maxHeaderStringLen() int {
 // merge them into into the provided hf and returns a MetaHeadersFrame
 // with the decoded hpack values.
 func (fr *Framer) readMetaFrame(hf *HeadersFrame) (*MetaHeadersFrame, error) {
+    //fmt.Println("vendor/golang.org/x/net/http2/frame.go  readMetaFrame()")
 	if fr.AllowIllegalReads {
 		return nil, errors.New("illegal use of AllowIllegalReads with ReadMetaHeaders")
 	}
@@ -1420,7 +1461,10 @@ func (fr *Framer) readMetaFrame(hf *HeadersFrame) (*MetaHeadersFrame, error) {
 
 	var hc headersOrContinuation = hf
 	for {
+        //fmt.Println("vendor/golang.org/x/net/http2/frame.go  readMetaFrame() before HeaderBlockFragment")
 		frag := hc.HeaderBlockFragment()
+        //fmt.Println("vendor/golang.org/x/net/http2/frame.go  readMetaFrame() after HeaderBlockFragment")
+        //fmt.Println("vendor/golang.org/x/net/http2/frame.go  readMetaFrame() before Write")
 		if _, err := hdec.Write(frag); err != nil {
 			return nil, ConnectionError(ErrCodeCompression)
 		}
@@ -1428,6 +1472,7 @@ func (fr *Framer) readMetaFrame(hf *HeadersFrame) (*MetaHeadersFrame, error) {
 		if hc.HeadersEnded() {
 			break
 		}
+        //fmt.Println("vendor/golang.org/x/net/http2/frame.go  readMetaFrame() before ReadFrame")
 		if f, err := fr.ReadFrame(); err != nil {
 			return nil, err
 		} else {

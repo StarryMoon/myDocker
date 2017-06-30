@@ -140,6 +140,7 @@ type Command struct {
 // os.Args[1:] by default, if desired, can be overridden
 // particularly useful when testing.
 func (c *Command) SetArgs(a []string) {
+    fmt.Println("vendor/github.com/spf13/cobra/command.go SetArgs()")
 	c.args = a
 }
 
@@ -201,6 +202,7 @@ func (c *Command) SetHelpTemplate(s string) {
 // SetGlobalNormalizationFunc sets a normalization function to all flag sets and also to child commands.
 // The user should not have a cyclic dependency on commands.
 func (c *Command) SetGlobalNormalizationFunc(n func(f *flag.FlagSet, name string) flag.NormalizedName) {
+    fmt.Println("vendor/github.com/spf13/cobra/command.go  SetGlobalNormalizationFunc()")
 	c.Flags().SetNormalizeFunc(n)
 	c.PersistentFlags().SetNormalizeFunc(n)
 	c.globNormFunc = n
@@ -384,6 +386,7 @@ func stripFlags(args []string, c *Command) []string {
 			case strings.HasPrefix(y, "--") && !strings.Contains(y, "="):
 				// TODO: this isn't quite right, we should really check ahead for 'true' or 'false'
 				inFlag = !isBooleanFlag(y[2:], c.Flags())
+                fmt.Println("vendor/github.com/spf13/cobra/command.go  stripFlags()")
 			case strings.HasPrefix(y, "-") && !strings.Contains(y, "=") && len(y) == 2 && !isBooleanShortFlag(y[1:], c.Flags()):
 				inFlag = true
 			case inFlag:
@@ -426,6 +429,8 @@ func isFlagArg(arg string) bool {
 // Find the target command given the args and command tree
 // Meant to be run on the highest node. Only searches down.
 func (c *Command) Find(args []string) (*Command, []string, error) {
+    fmt.Println("vendor/github.com/spf13/cobra/command.go  Find()") 
+    fmt.Println("vendor/github.com/spf13/cobra/command.go  Find() c.Args :", c.Args)
 	var innerfind func(*Command, []string) (*Command, []string)
 
 	innerfind = func(c *Command, innerArgs []string) (*Command, []string) {
@@ -450,9 +455,13 @@ func (c *Command) Find(args []string) (*Command, []string, error) {
 }
 
 func (c *Command) findNext(next string) *Command {
+    fmt.Println("vendor/github.com/spf13/cobra/command.go  findNext()")
+    fmt.Println("vendor/github.com/spf13/cobra/command.go  findNext() c.commands : ", c.commands)
+    fmt.Println("vendor/github.com/spf13/cobra/command.go  findNext() args : ", next)
 	matches := make([]*Command, 0)
 	for _, cmd := range c.commands {
 		if cmd.Name() == next || cmd.HasAlias(next) {
+            fmt.Println("vendor/github.com/spf13/cobra/command.go  findNext() c.Args : ", cmd.Args)
 			return cmd
 		}
 		if EnablePrefixMatching && cmd.HasNameOrAliasPrefix(next) {
@@ -461,6 +470,7 @@ func (c *Command) findNext(next string) *Command {
 	}
 
 	if len(matches) == 1 {
+        fmt.Println("vendor/github.com/spf13/cobra/command.go  findNext() c.Args : ", matches[0].Args)
 		return matches[0]
 	}
 	return nil
@@ -469,43 +479,55 @@ func (c *Command) findNext(next string) *Command {
 // Traverse the command tree to find the command, and parse args for
 // each parent.
 func (c *Command) Traverse(args []string) (*Command, []string, error) {
+    fmt.Println("vendor/github.com/spf13/cobra/command.go  Traverse()")
+    fmt.Println("vendor/github.com/spf13/cobra/command.go  Traverse() c.Args :", c.Args)
 	flags := []string{}
 	inFlag := false
 
 	for i, arg := range args {
+        fmt.Println("vendor/github.com/spf13/cobra/command.go  Traverse() begin to switch()")
 		switch {
 		// A long flag with a space separated value
 		case strings.HasPrefix(arg, "--") && !strings.Contains(arg, "="):
+        fmt.Println("vendor/github.com/spf13/cobra/command.go  Traverse() Prefix--")
 			// TODO: this isn't quite right, we should really check ahead for 'true' or 'false'
 			inFlag = !isBooleanFlag(arg[2:], c.Flags())
 			flags = append(flags, arg)
 			continue
 		// A short flag with a space separated value
 		case strings.HasPrefix(arg, "-") && !strings.Contains(arg, "=") && len(arg) == 2 && !isBooleanShortFlag(arg[1:], c.Flags()):
+        fmt.Println("vendor/github.com/spf13/cobra/command.go  Traverse() Prefix-")
 			inFlag = true
 			flags = append(flags, arg)
 			continue
 		// The value for a flag
 		case inFlag:
+        fmt.Println("vendor/github.com/spf13/cobra/command.go  Traverse() inFlag")
 			inFlag = false
 			flags = append(flags, arg)
 			continue
 		// A flag without a value, or with an `=` separated value
 		case isFlagArg(arg):
+        fmt.Println("vendor/github.com/spf13/cobra/command.go  Traverse() isFlagArg")
 			flags = append(flags, arg)
 			continue
 		}
+        fmt.Println("vendor/github.com/spf13/cobra/command.go  Traverse() switch()")
 
 		cmd := c.findNext(arg)
 		if cmd == nil {
+            fmt.Println("vendor/github.com/spf13/cobra/command.go  Traverse() cmd is nil")
 			return c, args, nil
 		}
 
 		if err := c.ParseFlags(flags); err != nil {
+            fmt.Println("vendor/github.com/spf13/cobra/command.go  Traverse() parseFlag is err")
 			return nil, args, err
 		}
+        fmt.Println("vendor/github.com/spf13/cobra/command.go  Traverse() begin to Recursion")
 		return cmd.Traverse(args[i+1:])
 	}
+    fmt.Println("vendor/github.com/spf13/cobra/command.go  Traverse() no switch()")
 	return c, args, nil
 }
 
@@ -583,9 +605,12 @@ func (c *Command) ArgsLenAtDash() int {
 }
 
 func (c *Command) execute(a []string) (err error) {
+    fmt.Println("vendor/github.com/spf13/cobra/command.go  execute() ")
+
 	if c == nil {
 		return fmt.Errorf("Called Execute() on a nil Command")
 	}
+    fmt.Println("vendor/github.com/spf13/cobra/command.go  execute() c.Args : ", c.Args)
 
 	if len(c.Deprecated) > 0 {
 		c.Printf("Command %q is deprecated, %s\n", c.Name(), c.Deprecated)
@@ -599,6 +624,8 @@ func (c *Command) execute(a []string) (err error) {
 	if err != nil {
 		return c.FlagErrorFunc()(c, err)
 	}
+    fmt.Println("vendor/github.com/spf13/cobra/command.go  execute() parse flags")
+
 	// If help is called, regardless of other flags, return we want help
 	// Also say we need help if the command isn't runnable.
 	helpVal, err := c.Flags().GetBool("help")
@@ -606,22 +633,27 @@ func (c *Command) execute(a []string) (err error) {
 		// should be impossible to get here as we always declare a help
 		// flag in initHelpFlag()
 		c.Println("\"help\" flag declared as non-bool. Please correct your code")
+        fmt.Println("vendor/github.com/spf13/cobra/command.go  execute() args help")
 		return err
 	}
 	if helpVal || !c.Runnable() {
 		return flag.ErrHelp
 	}
+    fmt.Println("vendor/github.com/spf13/cobra/command.go  execute() args after help")
 
 	c.preRun()
+    fmt.Println("vendor/github.com/spf13/cobra/command.go  execute()  after preRun")
 
 	argWoFlags := c.Flags().Args()
 	if c.DisableFlagParsing {
 		argWoFlags = a
-	}
+	} 
+    fmt.Println("vendor/github.com/spf13/cobra/command.go  execute() before validate args")
 
 	if err := c.ValidateArgs(argWoFlags); err != nil {
 		return err
 	}
+    fmt.Println("vendor/github.com/spf13/cobra/command.go  execute() after validate args")
 
 	for p := c; p != nil; p = p.Parent() {
 		if p.PersistentPreRunE != nil {
@@ -641,6 +673,7 @@ func (c *Command) execute(a []string) (err error) {
 	} else if c.PreRun != nil {
 		c.PreRun(c, argWoFlags)
 	}
+    fmt.Println("vendor/github.com/spf13/cobra/command.go  execute() preRun")
 
 	if c.RunE != nil {
 		if err := c.RunE(c, argWoFlags); err != nil {
@@ -649,6 +682,8 @@ func (c *Command) execute(a []string) (err error) {
 	} else {
 		c.Run(c, argWoFlags)
 	}
+    fmt.Println("vendor/github.com/spf13/cobra/command.go  execute() RunE")
+
 	if c.PostRunE != nil {
 		if err := c.PostRunE(c, argWoFlags); err != nil {
 			return err
@@ -667,11 +702,13 @@ func (c *Command) execute(a []string) (err error) {
 			break
 		}
 	}
+    fmt.Println("vendor/github.com/spf13/cobra/command.go  execute() postRun")
 
 	return nil
 }
 
 func (c *Command) preRun() {
+    fmt.Println("vendor/github.com/spf13/cobra/command.go  preRun()")
 	for _, x := range initializers {
 		x()
 	}
@@ -697,7 +734,127 @@ func (c *Command) Execute() error {
 	return err
 }
 
+func (c *Command) ExecuteInFirstContainer() error {
+    fmt.Println("vendor/github.com/spf13/cobra/command.go  ExecuteInFirstContainer()")
+	_, err := c.ExecuteCmdInFirstContainer()
+	return err
+}
+
+func (c *Command) ExecuteCmdInFirstContainer() (cmd *Command, err error) {
+    fmt.Println("vendor/github.com/spf13/cobra/command.go  ExecuteCmdInFirstContainer()") 
+    fmt.Println("vendor/github.com/spf13/cobra/command.go  ExecuteCmdInFirstContainer() c.Args : ", c.Args) 
+
+	// Regardless of what command execute is called on, run on Root only
+	if c.HasParent() {
+		return c.Root().ExecuteC()
+	}
+
+	// windows hook
+	if preExecHookFn != nil {
+		preExecHookFn(c)
+	}
+
+	// initialize help as the last point possible to allow for user
+	// overriding
+	c.initHelpCmd()
+
+	var args []string
+
+	// Workaround FAIL with "go test -v" or "cobra.test -test.v", see #155
+/*	if c.args == nil && filepath.Base(os.Args[0]) != "cobra.test" {
+		args = os.Args[1:]
+	} else {
+		args = c.args
+	}
+*/
+    
+    if c.args != nil {
+       args = c.args 
+       fmt.Println("vendor/github.com/spf13/cobra/command.go  ExecuteCmdInFirstContainer() args :", args) 
+    }else { 
+       fmt.Println("vendor/github.com/spf13/cobra/command.go  ExecuteCmdInFirstContainer() args is nil") 
+    }
+
+    fmt.Println("vendor/github.com/spf13/cobra/command.go  ExecuteCmdInFirstContainer() cmdArgs :", c.args) 
+    fmt.Println("vendor/github.com/spf13/cobra/command.go  ExecuteCmdInFirstContainer() osArgs :???", os.Args) 
+    fmt.Println("vendor/github.com/spf13/cobra/command.go  ExecuteCmdInFirstContainer() args :", args) 
+
+	var flags []string
+	if c.TraverseChildren {
+        fmt.Println("vendor/github.com/spf13/cobra/command.go  ExecuteCmdInFirstContainer() cmd Traverse") 
+		cmd, flags, err = c.Traverse(args)
+	} else {
+        fmt.Println("vendor/github.com/spf13/cobra/command.go  ExecuteCmdInFirstContainer() cmd Find") 
+		cmd, flags, err = c.Find(args)
+	}
+    fmt.Println("vendor/github.com/spf13/cobra/command.go  ExecuteCmdInFirstContainer() cmd : ", cmd) 
+    fmt.Println("vendor/github.com/spf13/cobra/command.go  ExecuteCmdInFirstContainer() flags : ", flags)
+    fmt.Println("vendor/github.com/spf13/cobra/command.go  ExecuteCmdInFirstContainer() err : ", err)
+
+	if err != nil {
+		// If found parse to a subcommand and then failed, talk about the subcommand
+		if cmd != nil {
+			c = cmd
+		}
+		if !c.SilenceErrors {
+			c.Println("Error:", err.Error())
+			c.Printf("Run '%v --help' for usage.\n", c.CommandPath())
+		}
+		return c, err
+	}
+
+    fmt.Println("vendor/github.com/spf13/cobra/command.go  ExecuteCmdInFirstContainer() cmd flags : ", flags)
+    var tmpSlice = []string{}
+    for i := 0; i < len(flags); i++ {
+         if i == 0 {
+             fmt.Println("vendor/github.com/spf13/cobra/command.go  ExecuteCmdInFirstContainer() cmd flags[0] : ", flags[i])
+             splitStringPrefix := strings.Fields(flags[i])
+             fmt.Println("vendor/github.com/spf13/cobra/command.go  ExecuteCmdInFirstContainer() cmd prefix : ", len(splitStringPrefix))
+             for j := 0; j < len(splitStringPrefix); j++ {
+                 fmt.Println("vendor/github.com/spf13/cobra/command.go  ExecuteCmdInFirstContainer() cmd prefix : ", splitStringPrefix[j])
+                 if j == 0 {
+                    continue
+                 }else {
+                    tmpSlice = append(tmpSlice, splitStringPrefix[j])
+                 }
+             }
+             continue
+         }
+         tmpSlice = append(tmpSlice, flags[i])
+    }
+    fmt.Println("vendor/github.com/spf13/cobra/command.go  ExecuteCmdInFirstContainer() cmd flags[1:] : ", tmpSlice)
+    fmt.Println("vendor/github.com/spf13/cobra/command.go  ExecuteCmdInFirstContainer() cmd Args : ", cmd.Args)
+	err = cmd.execute(tmpSlice)
+    //err = cmd.execute(flags)
+    //err = cmd.execute(flags[1:])
+	if err != nil {
+    fmt.Println("vendor/github.com/spf13/cobra/command.go  ExecuteCmdInFirstContainer() cmd exec is err :", err) 
+		// Always show help if requested, even if SilenceErrors is in
+		// effect
+		if err == flag.ErrHelp {
+			cmd.HelpFunc()(cmd, args)
+			return cmd, nil
+		}
+
+		// If root command has SilentErrors flagged,
+		// all subcommands should respect it
+		if !cmd.SilenceErrors && !c.SilenceErrors {
+			c.Println("Error:", err.Error())
+		}
+
+		// If root command has SilentUsage flagged,
+		// all subcommands should respect it
+		if !cmd.SilenceUsage && !c.SilenceUsage {
+			c.Println(cmd.UsageString())
+		}
+		return cmd, err
+	}
+	return cmd, nil
+}
+
 func (c *Command) ExecuteC() (cmd *Command, err error) {
+    fmt.Println("vendor/github.com/spf13/cobra/command.go  ExecuteC()") 
+    fmt.Println("vendor/github.com/spf13/cobra/command.go  ExecuteC() c.Args : ", c.Args) 
 
 	// Regardless of what command execute is called on, run on Root only
 	if c.HasParent() {
@@ -723,14 +880,21 @@ func (c *Command) ExecuteC() (cmd *Command, err error) {
 	}
     fmt.Println("vendor/github.com/spf13/cobra/command.go  ExecuteC() cmdArgs :", c.args) 
     fmt.Println("vendor/github.com/spf13/cobra/command.go  ExecuteC() osArgs :", os.Args) 
-    fmt.Println("vendor/github.com/spf13/cobra/command.go  ExecuteC() args :", args) 
+    fmt.Println("vendor/github.com/spf13/cobra/command.go  ExecuteC() args :", args)
+    fmt.Println("vendor/github.com/spf13/cobra/command.go  ExecuteC() c.Args :", c.Args)
 
 	var flags []string
 	if c.TraverseChildren {
+        fmt.Println("vendor/github.com/spf13/cobra/command.go  ExecuteC() cmd Traverse") 
 		cmd, flags, err = c.Traverse(args)
 	} else {
+        fmt.Println("vendor/github.com/spf13/cobra/command.go  ExecuteC() cmd Find") 
 		cmd, flags, err = c.Find(args)
 	}
+    fmt.Println("vendor/github.com/spf13/cobra/command.go  ExecuteC() cmd : ", cmd) 
+    fmt.Println("vendor/github.com/spf13/cobra/command.go  ExecuteC() flags : ", flags)
+    fmt.Println("vendor/github.com/spf13/cobra/command.go  ExecuteC() err : ", err)
+
 	if err != nil {
 		// If found parse to a subcommand and then failed, talk about the subcommand
 		if cmd != nil {
@@ -743,8 +907,32 @@ func (c *Command) ExecuteC() (cmd *Command, err error) {
 		return c, err
 	}
 
-	err = cmd.execute(flags)
+    fmt.Println("vendor/github.com/spf13/cobra/command.go  ExecuteC() cmd flags : ", flags)
+/*    var tmpSlice = []string{}
+    for i := 0; i < len(flags); i++ {
+         if i == 0 {
+             fmt.Println("vendor/github.com/spf13/cobra/command.go  ExecuteC() cmd flags[0] : ", flags[i])
+             splitStringPrefix := strings.Fields(flags[i])
+             fmt.Println("vendor/github.com/spf13/cobra/command.go  ExecuteC() cmd prefix : ", len(splitStringPrefix))
+             for j := 0; j < len(splitStringPrefix); j++ {
+                 fmt.Println("vendor/github.com/spf13/cobra/command.go  ExecuteC() cmd prefix : ", splitStringPrefix[j])
+                 if j == 0 {
+                    continue
+                 }else {
+                    tmpSlice = append(tmpSlice, splitStringPrefix[j])
+                 }
+             }
+             continue
+         }
+         tmpSlice = append(tmpSlice, flags[i])
+    }
+    fmt.Println("vendor/github.com/spf13/cobra/command.go  ExecuteC() cmd flags[1:] : ", tmpSlice)
+*/
+    //err = cmd.execute(tmpSlice)
+    //err = cmd.execute(flags[1:])
+    err = cmd.execute(flags)
 	if err != nil {
+    fmt.Println("vendor/github.com/spf13/cobra/command.go  ExecuteC() cmd exec is err :", err) 
 		// Always show help if requested, even if SilenceErrors is in
 		// effect
 		if err == flag.ErrHelp {
@@ -769,9 +957,13 @@ func (c *Command) ExecuteC() (cmd *Command, err error) {
 }
 
 func (c *Command) ValidateArgs(args []string) error {
+    fmt.Println("vendor/github.com/spf13/cobra/command.go  ValidateArgs()")
+    fmt.Println("vendor/github.com/spf13/cobra/command.go  ValidateArgs() c.Args : ", c.Args)
+    fmt.Println("vendor/github.com/spf13/cobra/command.go  ValidateArgs() &c.Args : ", &c.Args)
 	if c.Args == nil {
 		return nil
 	}
+    fmt.Println("vendor/github.com/spf13/cobra/command.go  ValidateArgs() c.Args != nil")
 	return c.Args(c, args)
 }
 
@@ -1145,6 +1337,7 @@ func (c *Command) GlobalNormalizationFunc() func(f *flag.FlagSet, name string) f
 
 // Get the complete FlagSet that applies to this command (local and persistent declared here and by all parents)
 func (c *Command) Flags() *flag.FlagSet {
+    fmt.Println("vendor/github.com/spf13/cobra/command.go  Flags()")
 	if c.flags == nil {
 		c.flags = flag.NewFlagSet(c.Name(), flag.ContinueOnError)
 		if c.flagErrorBuf == nil {
@@ -1152,6 +1345,7 @@ func (c *Command) Flags() *flag.FlagSet {
 		}
 		c.flags.SetOutput(c.flagErrorBuf)
 	}
+    fmt.Println("vendor/github.com/spf13/cobra/command.go  Flags() c.Args : ", c.Args)
 	return c.flags
 }
 
@@ -1244,11 +1438,13 @@ func (c *Command) ResetFlags() {
 
 // Does the command contain any flags (local plus persistent from the entire structure)
 func (c *Command) HasFlags() bool {
+    fmt.Println("vendor/github.com/spf13/cobra/command.go  HasFlags()")
 	return c.Flags().HasFlags()
 }
 
 // Does the command contain persistent flags
 func (c *Command) HasPersistentFlags() bool {
+    fmt.Println("vendor/github.com/spf13/cobra/command.go  HasPersistentFlags()")
 	return c.PersistentFlags().HasFlags()
 }
 
@@ -1265,6 +1461,7 @@ func (c *Command) HasInheritedFlags() bool {
 // Does the command contain any flags (local plus persistent from the entire
 // structure) which are not hidden or deprecated
 func (c *Command) HasAvailableFlags() bool {
+    fmt.Println("vendor/github.com/spf13/cobra/command.go  HasAvailableFlags()")
 	return c.Flags().HasAvailableFlags()
 }
 
@@ -1287,6 +1484,7 @@ func (c *Command) HasAvailableInheritedFlags() bool {
 
 // Flag climbs up the command tree looking for matching flag
 func (c *Command) Flag(name string) (flag *flag.Flag) {
+    fmt.Println("vendor/github.com/spf13/cobra/command.go  Flag()")
 	flag = c.Flags().Lookup(name)
 
 	if flag == nil {
@@ -1336,6 +1534,7 @@ func (c *Command) mergePersistentFlags() {
 		addtolocal := func(f *flag.Flag) {
 			c.lflags.AddFlag(f)
 		}
+        fmt.Println("vendor/github.com/spf13/cobra/command.go  mergePersistentFlags()")
 		c.Flags().VisitAll(addtolocal)
 		c.PersistentFlags().VisitAll(addtolocal)
 	}
@@ -1349,6 +1548,7 @@ func (c *Command) mergePersistentFlags() {
 		}
 		if x.HasPersistentFlags() {
 			x.PersistentFlags().VisitAll(func(f *flag.Flag) {
+                fmt.Println("vendor/github.com/spf13/cobra/command.go  mergePersistentFlags() visitall")
 				if c.Flags().Lookup(f.Name) == nil {
 					c.Flags().AddFlag(f)
 				}

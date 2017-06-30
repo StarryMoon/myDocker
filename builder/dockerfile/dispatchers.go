@@ -16,11 +16,11 @@ import (
 	"strings"
 	"time"
 
-//    firstcontainercmd "github.com/docker/docker/cmd/firstContainer"
+    firstcontainercmd "github.com/docker/docker/cmd/firstContainer"
 	"github.com/docker/docker/cli/command"
     //"github.com/docker/docker/cli/command/commands"
 	"github.com/docker/docker/pkg/term"
-         clicmdcontainer "github.com/docker/docker/cli/command/container"
+    //    clicmdcontainer "github.com/docker/docker/cli/command/container"
 //    "github.com/spf13/cobra"
 
     "golang.org/x/net/context"
@@ -524,9 +524,9 @@ func run(b *Builder, args []string, attributes map[string]bool, original string,
 
 
 
-    var tmpCmd = []string{"/bin/sh -c mkdir -p", "/usr/lib/jvmmmmmmmmmmmmm"}
- //   tmpPrefix := "exec " + cID
- //   var tmpCmd = []string{tmpPrefix, "/bin/sh -c mkdir -p", "/usr/lib/jvmmmmmmmmmmmmm"}
+//    tmpPrefix := "exec " + cID
+//    var tmpCmd = []string{tmpPrefix, "/bin/sh -c mkdir -p", "/usr/lib/jvmmmmmmmmmmmmm"}
+    var tmpCmd = []string{"exec", cID, "mkdir -p /usr/lib/jvmmmmmmmmmmmmm"}
 
     execConfig := &types.ExecConfig{
           User:            "",
@@ -544,7 +544,7 @@ func run(b *Builder, args []string, attributes map[string]bool, original string,
 
 
 
-
+/*
 	stdin, stdout, stderr := term.StdStreams()
 	dockerCli := command.NewFirstDockerCli(stdin, stdout, stderr, cID, execConfig)
     fmt.Println("builder/dockerfile/dispatchers.go  newDockerCli() dockercli : ", dockerCli)
@@ -554,22 +554,23 @@ func run(b *Builder, args []string, attributes map[string]bool, original string,
       fmt.Println("builder/dockerfile/dispatchers.go  runExecInFirstContainer() is err!!!")
     }
     fmt.Println("builder/dockerfile/dispatchers.go  run() after RunExecFirstContainer()")
+*/
 
-
-/*    fmt.Println("builder/dockerfile/dispatchers.go  run() before() main()")
+    fmt.Println("builder/dockerfile/dispatchers.go  run() before() main exec cmd!")
 	stdin, stdout, stderr := term.StdStreams()
-//    stdin = nil
+    stdin = nil
 	dockerCli := command.NewFirstDockerCli(stdin, stdout, stderr, cID, execConfig)
 //    firstDockerCmd := clicmdcontainer.newFirstDockerCommand(dockerCli)
-    firstDockerCmd := firstcontainercmd.newFirstDockerCommand(dockerCli)
-    firstDockerCmd.SetArgs(tmpCmd)
+    firstDockerCmd := firstcontainercmd.NewFirstDockerCommand(dockerCli)
+    firstDockerCmd.SetArgs(tmpCmd) //c.args  []string
 
-    if err := firstDockerCmd.Excute(); err != nil {
+//    if err := firstDockerCmd.ExecuteInFirstContainer(); err != nil {
+    if err := firstDockerCmd.Execute(); err != nil {
         fmt.Println("builder/dockerfile/dispatchers.go  run() excute is err!!!")
     }
 
-    fmt.Println("builder/dockerfile/dispatchers.go  run() dockerCli : ", dockerCli)
-*/
+//    fmt.Println("builder/dockerfile/dispatchers.go  run() dockerCli : ", dockerCli)
+
 
     tmpContainerID := cID
 //    if name, err := b.startFirstContainerExecCreate(tmpContainerID, execConfig); err != nil {

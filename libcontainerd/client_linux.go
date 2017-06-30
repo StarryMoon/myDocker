@@ -53,7 +53,7 @@ func (clnt *client) AddProcess(ctx context.Context, containerID, processFriendly
     fmt.Println("libcontainerd/client_linux.go  AddProcess()")
 
     if err != nil {
-        fmt.Println("libcontainerd/client_linux.go  AddProcess() get container is err!!!")
+        fmt.Println("libcontainerd/client_linux.go  AddProcess() get container is err : ", err)
 		return -1, err
 	}
 

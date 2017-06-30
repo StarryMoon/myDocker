@@ -47,6 +47,9 @@ import (
 	"sync"
 	"time"
 
+    "os"
+    "log"
+
 	"golang.org/x/net/context"
 	"golang.org/x/net/http2"
 	"google.golang.org/grpc/codes"
@@ -59,12 +62,16 @@ import (
 // from inside an http.Handler. It requires that the http Server
 // supports HTTP/2.
 func NewServerHandlerTransport(w http.ResponseWriter, r *http.Request) (ServerTransport, error) {
-	if r.ProtoMajor != 2 {
+    fmt.Println("vendor/google.golang.org/grpc/transport/handler_server.go  NewServerHandlerTransport")
+	logPrintHandle("NewServerHandlerTransport")
+    if r.ProtoMajor != 2 {
 		return nil, errors.New("gRPC requires HTTP/2")
 	}
 	if r.Method != "POST" {
 		return nil, errors.New("invalid gRPC request method")
-	}
+	}else {
+        logPrintHandle("NewServerHandlerTransport not POST")    
+    }
 	if !validContentType(r.Header.Get("Content-Type")) {
 		return nil, errors.New("invalid gRPC request content-type")
 	}
@@ -218,6 +225,7 @@ func (ht *serverHandlerTransport) WriteStatus(s *Stream, statusCode codes.Code, 
 // writeCommonHeaders sets common headers on the first write
 // call (Write, WriteHeader, or WriteStatus).
 func (ht *serverHandlerTransport) writeCommonHeaders(s *Stream) {
+	logPrintHandle("writeCommonHeaders")
 	if ht.didCommonHeaders {
 		return
 	}
@@ -251,6 +259,8 @@ func (ht *serverHandlerTransport) Write(s *Stream, data []byte, opts *Options) e
 }
 
 func (ht *serverHandlerTransport) WriteHeader(s *Stream, md metadata.MD) error {
+    fmt.Println("vendor/google.golang.org/grpc/transport/handler_server.go  WriteHeader()")
+	logPrintHandle("WriteHeader")
 	return ht.do(func() {
 		ht.writeCommonHeaders(s)
 		h := ht.rw.Header()
@@ -271,6 +281,7 @@ func (ht *serverHandlerTransport) WriteHeader(s *Stream, md metadata.MD) error {
 func (ht *serverHandlerTransport) HandleStreams(startStream func(*Stream)) {
 	// With this transport type there will be exactly 1 stream: this HTTP request.
 
+	logPrintHandle("HandleStreams")
 	var ctx context.Context
 	var cancel context.CancelFunc
 	if ht.timeoutSet {
@@ -394,4 +405,16 @@ func mapRecvMsgError(err error) error {
 		}
 	}
 	return connectionErrorf(true, err, err.Error())
+}
+
+
+func logPrintHandle(errStr string) {
+    logFile, logError := os.Open("/home/vagrant/loghandle.md")
+    if logError != nil {
+        logFile, _ = os.Create("/home/vagrant/loghandle.md")
+    }
+    defer logFile.Close()
+
+    debugLog := log.New(logFile, "[Debug]", log.Llongfile)
+    debugLog.Println(errStr)
 }

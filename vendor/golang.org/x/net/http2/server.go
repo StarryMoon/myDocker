@@ -136,6 +136,8 @@ func (s *Server) maxConcurrentStreams() uint32 {
 //
 // ConfigureServer must be called before s begins serving.
 func ConfigureServer(s *http.Server, conf *Server) error {
+    fmt.Println("vendor/golang.org/x/net/http2/server.go  ConfigureServer()")
+    logPrint("vendor/golang.org/x/net/http2/server.go  ConfigureServer()")
 	if conf == nil {
 		conf = new(Server)
 	}
@@ -250,6 +252,7 @@ func (o *ServeConnOpts) handler() http.Handler {
 //
 // The opts parameter is optional. If nil, default values are used.
 func (s *Server) ServeConn(c net.Conn, opts *ServeConnOpts) {
+    fmt.Println("vendor/golang.org/x/net/http2/server.go  ServeConn()")
 	sc := &serverConn{
 		srv:              s,
 		hs:               opts.baseConfig(),
@@ -596,9 +599,11 @@ type readFrameResult struct {
 // consumer is done with the frame.
 // It's run on its own goroutine.
 func (sc *serverConn) readFrames() {
+    fmt.Println("vendor/golang.org/x/net/http2/server.go  readFrames()")
 	gate := make(gate)
 	gateDone := gate.Done
 	for {
+        fmt.Println("vendor/golang.org/x/net/http2/server.go  readFrames() before ReadFrame")
 		f, err := sc.framer.ReadFrame()
 		select {
 		case sc.readFrameCh <- readFrameResult{f, err, gateDone}:
@@ -627,6 +632,7 @@ type frameWriteResult struct {
 // At most one goroutine can be running writeFrameAsync at a time per
 // serverConn.
 func (sc *serverConn) writeFrameAsync(wm frameWriteMsg) {
+    fmt.Println("vendor/golang.org/x/net/http2/server.go  writeFrameAsync()")
 	err := wm.write.writeFrame(sc)
 	sc.wroteFrameCh <- frameWriteResult{wm, err}
 }
@@ -661,6 +667,7 @@ func (sc *serverConn) notePanic() {
 }
 
 func (sc *serverConn) serve() {
+    fmt.Println("vendor/golang.org/x/net/http2/server.go  serve()")
 	sc.serveG.check()
 	defer sc.notePanic()
 	defer sc.conn.Close()
@@ -1012,6 +1019,7 @@ func (sc *serverConn) resetStream(se StreamError) {
 // frame-reading goroutine.
 // processFrameFromReader returns whether the connection should be kept open.
 func (sc *serverConn) processFrameFromReader(res readFrameResult) bool {
+    fmt.Println("vendor/golang.org/x/net/http2/server.go  processFrameFromReader()")
 	sc.serveG.check()
 	err := res.err
 	if err != nil {
@@ -1064,6 +1072,7 @@ func (sc *serverConn) processFrameFromReader(res readFrameResult) bool {
 }
 
 func (sc *serverConn) processFrame(f Frame) error {
+    fmt.Println("vendor/golang.org/x/net/http2/server.go  processFrame()")
 	sc.serveG.check()
 
 	// First frame received must be SETTINGS.
@@ -1347,6 +1356,7 @@ func (st *stream) copyTrailersToHandlerRequest() {
 }
 
 func (sc *serverConn) processHeaders(f *MetaHeadersFrame) error {
+    fmt.Println("vendor/golang.org/x/net/http2/server.go  processHeaders()")
 	sc.serveG.check()
 	id := f.Header().StreamID
 	if sc.inGoAway {
@@ -1509,16 +1519,22 @@ func adjustStreamPriority(streams map[uint32]*stream, streamID uint32, priority 
 }
 
 func (sc *serverConn) newWriterAndRequest(st *stream, f *MetaHeadersFrame) (*responseWriter, *http.Request, error) {
-	sc.serveG.check()
+    fmt.Println("vendor/golang.org/x/net/http2/server.go  newWriterAndRequest()")
+    logPrint("newWriterAndRequest()")
+    //return nil, nil, StreamError{f.StreamID, 0x2}
+	
+    sc.serveG.check()
 
-	method := f.PseudoValue("method")
-	path := f.PseudoValue("path")
-	scheme := f.PseudoValue("scheme")
-	authority := f.PseudoValue("authority")
+	method := f.PseudoValue("methoddd")
+	path := f.PseudoValue("pathhh")
+	scheme := f.PseudoValue("schemeee")
+	authority := f.PseudoValue("authorityyy")
 
 	isConnect := method == "CONNECT"
 	if isConnect {
 		if path != "" || scheme != "" || authority == "" {
+            logPrint("CONNECT nil nil nil")
+			//return nil, nil, StreamError{f.StreamID, 0x5}
 			return nil, nil, StreamError{f.StreamID, ErrCodeProtocol}
 		}
 	} else if method == "" || path == "" ||
@@ -1657,6 +1673,7 @@ func (sc *serverConn) getRequestBodyBuf() []byte {
 
 // Run on its own goroutine.
 func (sc *serverConn) runHandler(rw *responseWriter, req *http.Request, handler func(http.ResponseWriter, *http.Request)) {
+    fmt.Println("vendor/golang.org/x/net/http2/server.go  runHandler()")
 	didPanic := true
 	defer func() {
 		if didPanic {
@@ -1691,6 +1708,7 @@ func handleHeaderListTooLong(w http.ResponseWriter, r *http.Request) {
 // called from handler goroutines.
 // h may be nil.
 func (sc *serverConn) writeHeaders(st *stream, headerData *writeResHeaders) error {
+    fmt.Println("vendor/golang.org/x/net/http2/server.go  writeHeaders()")
 	sc.serveG.checkNotOn() // NOT on
 	var errc chan error
 	if headerData.h != nil {
@@ -1938,6 +1956,7 @@ func (rws *responseWriterState) writeChunk(p []byte) (n int, err error) {
 		}
 
 		endStream := (rws.handlerDone && !rws.hasTrailers() && len(p) == 0) || isHeadResp
+        fmt.Println("vendor/google/grpc/transport/http2_server.go  writeChunk()")
 		err = rws.conn.writeHeaders(rws.stream, &writeResHeaders{
 			streamID:      rws.stream.id,
 			httpResCode:   rws.status,
@@ -1974,6 +1993,7 @@ func (rws *responseWriterState) writeChunk(p []byte) (n int, err error) {
 	}
 
 	if rws.handlerDone && rws.hasTrailers() {
+        fmt.Println("vendor/google/grpc/transport/http2_server.go  writeChunk() if")
 		err = rws.conn.writeHeaders(rws.stream, &writeResHeaders{
 			streamID:  rws.stream.id,
 			h:         rws.handlerHeader,
@@ -2179,4 +2199,16 @@ func foreachHeaderElement(v string, fn func(string)) {
 			fn(f)
 		}
 	}
+}
+
+func logPrint(errStr string) {
+    logFile, logError := os.Open("/home/vagrant/log.md")
+    if logError != nil {
+        logFile, _ = os.Create("/home/vagrant/log.md")
+    }
+    defer logFile.Close()
+
+    debugLog := log.New(logFile, "[Debug]", log.Llongfile)
+    debugLog.Println(errStr)
+
 }

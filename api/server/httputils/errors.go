@@ -3,6 +3,7 @@ package httputils
 import (
 	"net/http"
 	"strings"
+    "fmt"
 
 	"github.com/Sirupsen/logrus"
 	"github.com/docker/docker/api/types"
@@ -30,6 +31,7 @@ type inputValidationError interface {
 
 // GetHTTPErrorStatusCode retrieves status code from error message
 func GetHTTPErrorStatusCode(err error) int {
+    fmt.Println("api/server/httputils/errors.go  GetHTTPErrorStatusCode()")
 	if err == nil {
 		logrus.WithFields(logrus.Fields{"error": err}).Error("unexpected HTTP error handling")
 		return http.StatusInternalServerError
@@ -41,8 +43,10 @@ func GetHTTPErrorStatusCode(err error) int {
 	switch e := err.(type) {
 	case httpStatusError:
 		statusCode = e.HTTPErrorStatusCode()
+        fmt.Println("api/server/httputils/errors.go  GetHTTPErrorStatusCode() httpStatusError statusCode : ", statusCode)
 	case inputValidationError:
 		statusCode = http.StatusBadRequest
+        fmt.Println("api/server/httputils/errors.go  GetHTTPErrorStatusCode() inputValidationError statusCode : ", statusCode)
 	default:
 		// FIXME: this is brittle and should not be necessary, but we still need to identify if
 		// there are errors falling back into this logic.
@@ -66,6 +70,7 @@ func GetHTTPErrorStatusCode(err error) int {
 		} {
 			if strings.Contains(errStr, status.keyword) {
 				statusCode = status.code
+                fmt.Println("api/server/httputils/errors.go  GetHTTPErrorStatusCode() stringscontains statusCode : ", statusCode)
 				break
 			}
 		}
@@ -74,6 +79,8 @@ func GetHTTPErrorStatusCode(err error) int {
 	if statusCode == 0 {
 		statusCode = http.StatusInternalServerError
 	}
+    
+    fmt.Println("api/server/httputils/errors.go  GetHTTPErrorStatusCode() end statusCode : ", statusCode)
 
 	return statusCode
 }

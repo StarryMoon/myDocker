@@ -43,6 +43,10 @@ import (
 	"sync"
 	"time"
 
+    "os"
+    "log"
+    "strconv"
+
 	"golang.org/x/net/context"
 	"golang.org/x/net/http2"
 	"golang.org/x/net/http2/hpack"
@@ -146,8 +150,11 @@ func isTemporary(err error) bool {
 // and starts to receive messages on it. Non-nil error returns if construction
 // fails.
 func newHTTP2Client(ctx context.Context, addr string, opts ConnectOptions) (_ ClientTransport, err error) {
+    fmt.Println("vendor/google.golang.org/grpc/transport/http2_client.go  newHTTP2Client()")
 	scheme := "http"
 	conn, err := dial(opts.Dialer, ctx, addr)
+    //fmt.Println("vendor/google.golang.org/grpc/transport/http2_client.go  newHTTP2Client() addr : ", addr)
+    //fmt.Println("vendor/google.golang.org/grpc/transport/http2_client.go  newHTTP2Client() conn : ", conn)
 	if err != nil {
 		return nil, connectionErrorf(true, err, "transport: %v", err)
 	}
@@ -200,8 +207,10 @@ func newHTTP2Client(ctx context.Context, addr string, opts ConnectOptions) (_ Cl
 	// Start the reader goroutine for incoming message. Each transport has
 	// a dedicated goroutine which reads HTTP2 frame from network. Then it
 	// dispatches the frame to the corresponding stream entity.
+    //fmt.Println("vendor/google.golang.org/grpc/transport/http2_client.go  newHTTP2Client() go t.reader()")
 	go t.reader()
 	// Send connection preface to server.
+    //fmt.Println("vendor/google.golang.org/grpc/transport/http2_client.go  newHTTP2Client() before Write")
 	n, err := t.conn.Write(clientPreface)
 	if err != nil {
 		t.Close()
@@ -267,6 +276,7 @@ func (t *http2Client) newStream(ctx context.Context, callHdr *CallHdr) *Stream {
 // NewStream creates a stream and register it into the transport as "active"
 // streams.
 func (t *http2Client) NewStream(ctx context.Context, callHdr *CallHdr) (_ *Stream, err error) {
+    //fmt.Println("vendor/google.golang.org/grpc/transport/http2_client.go  NewStream()")
 	pr := &peer.Peer{
 		Addr: t.conn.RemoteAddr(),
 	}
@@ -287,7 +297,7 @@ func (t *http2Client) NewStream(ctx context.Context, callHdr *CallHdr) (_ *Strea
 		}
 		pos := strings.LastIndex(callHdr.Method, "/")
 		if pos == -1 {
-			return nil, streamErrorf(codes.InvalidArgument, "transport: malformed method name: %q", callHdr.Method)
+			return nil, streamErrorf(codes.InvalidArgument, "transport: mmmmmmmmmmalformed method name: %q", callHdr.Method)
 		}
 		audience := "https://" + callHdr.Host + port + callHdr.Method[:pos]
 		data, err := c.GetRequestMetadata(ctx, audience)
@@ -362,11 +372,23 @@ func (t *http2Client) NewStream(ctx context.Context, callHdr *CallHdr) (_ *Strea
 	// called, the corresponding headers/continuation frame has to be sent
 	// because hpack.Encoder is stateful.
 	t.hBuf.Reset()
+    //fmt.Println("vendor/google.golang.org/grpc/transport/http2_client.go  NewStream() WriteField")
+/*	t.hEnc.WriteField(hpack.HeaderField{Name: ":method", Value: ""})
+    t.hEnc.WriteField(hpack.HeaderField{Name: ":scheme", Value: ""})
+	t.hEnc.WriteField(hpack.HeaderField{Name: ":path", Value: ""})
+	t.hEnc.WriteField(hpack.HeaderField{Name: ":authority", Value: ""})
+*/
+
 	t.hEnc.WriteField(hpack.HeaderField{Name: ":method", Value: "POST"})
 	t.hEnc.WriteField(hpack.HeaderField{Name: ":scheme", Value: t.scheme})
 	t.hEnc.WriteField(hpack.HeaderField{Name: ":path", Value: callHdr.Method})
 	t.hEnc.WriteField(hpack.HeaderField{Name: ":authority", Value: callHdr.Host})
-	t.hEnc.WriteField(hpack.HeaderField{Name: "content-type", Value: "application/grpc"})
+
+    //fmt.Println("vendor/google.golang.org/grpc/transport/http2_client.go  NewStream() WriteField t.scheme : ", t.scheme)
+    //fmt.Println("vendor/google.golang.org/grpc/transport/http2_client.go  NewStream() WriteField callHdr.Method : ", callHdr.Method)
+    //fmt.Println("vendor/google.golang.org/grpc/transport/http2_client.go  NewStream() WriteField callHdr.Host : ", callHdr.Host)
+    
+    t.hEnc.WriteField(hpack.HeaderField{Name: "content-type", Value: "application/grpc"})
 	t.hEnc.WriteField(hpack.HeaderField{Name: "user-agent", Value: t.userAgent})
 	t.hEnc.WriteField(hpack.HeaderField{Name: "te", Value: "trailers"})
 
@@ -424,7 +446,14 @@ func (t *http2Client) NewStream(ctx context.Context, callHdr *CallHdr) (_ *Strea
 			// Do a force flush for the buffered frames iff it is the last headers frame
 			// and there is header metadata to be sent. Otherwise, there is flushing until
 			// the corresponding data frame is written.
+            //fmt.Println("vendor/google.golang.org/grpc/transport/http2_client.go  NewStream() writeHeaders //p")
+            //fmt.Println("vendor/google.golang.org/grpc/transport/http2_client.go  NewStream() writeHeaders //p StreamID : ", p.StreamID)
+            //fmt.Println("vendor/google.golang.org/grpc/transport/http2_client.go  NewStream() writeHeaders //p p.BlockFragment : ", p.BlockFragment)
+            //fmt.Println("vendor/google.golang.org/grpc/transport/http2_client.go  NewStream() writeHeaders //p EndStream : ", p.EndStream)
+            //fmt.Println("vendor/google.golang.org/grpc/transport/http2_client.go  NewStream() writeHeaders //p EndHeaders : ", p.EndHeaders)
 			err = t.framer.writeHeaders(flush, p)
+            //fmt.Println("vendor/google.golang.org/grpc/transport/http2_client.go  NewStream() writeHeaders //p p : ", p)
+            //fmt.Println("vendor/google.golang.org/grpc/transport/http2_client.go  NewStream() writeHeaders //p end")
 			first = false
 		} else {
 			// Sends Continuation frames for the leftover headers.
@@ -436,6 +465,7 @@ func (t *http2Client) NewStream(ctx context.Context, callHdr *CallHdr) (_ *Strea
 		}
 	}
 	t.writableChan <- 0
+    //fmt.Println("vendor/google.golang.org/grpc/transport/http2_client.go  NewStream() end")
 	return s, nil
 }
 
@@ -566,8 +596,8 @@ func (t *http2Client) GracefulClose() error {
 // if it improves the performance.
 func (t *http2Client) Write(s *Stream, data []byte, opts *Options) error {
     if s.StatusCode() != 0 {
-         fmt.Println("vendor/google/grpc/transport/http2_client.go  Write() begin StatusCode : ", s.StatusCode())
-         fmt.Println("vendor/google/grpc/transport/http2_client.go  Write() begin StatusDesc : ", s.StatusDesc())
+         //fmt.Println("vendor/google/grpc/transport/http2_client.go  Write() begin StatusCode : ", s.StatusCode())
+         //fmt.Println("vendor/google/grpc/transport/http2_client.go  Write() begin StatusDesc : ", s.StatusDesc())
     }
 
 	r := bytes.NewBuffer(data)
@@ -609,8 +639,8 @@ func (t *http2Client) Write(s *Stream, data []byte, opts *Options) error {
 		}
 
         if s.StatusCode() != 0 {
-             fmt.Println("vendor/google/grpc/transport/http2_client.go  Write() for StatusCode : ", s.StatusCode())
-             fmt.Println("vendor/google/grpc/transport/http2_client.go  Write() for StatusDesc : ", s.StatusDesc())
+             //fmt.Println("vendor/google/grpc/transport/http2_client.go  Write() for StatusCode : ", s.StatusCode())
+             //fmt.Println("vendor/google/grpc/transport/http2_client.go  Write() for StatusDesc : ", s.StatusDesc())
         }
 
 		var (
@@ -639,8 +669,8 @@ func (t *http2Client) Write(s *Stream, data []byte, opts *Options) error {
 		}
         
         if s.StatusCode() != 0 {
-             fmt.Println("vendor/google/grpc/transport/http2_client.go  Write() waitT StatusCode : ", s.StatusCode())
-             fmt.Println("vendor/google/grpc/transport/http2_client.go  Write() waitT StatusDesc : ", s.StatusDesc())
+             //fmt.Println("vendor/google/grpc/transport/http2_client.go  Write() waitT StatusCode : ", s.StatusCode())
+             //fmt.Println("vendor/google/grpc/transport/http2_client.go  Write() waitT StatusDesc : ", s.StatusDesc())
         }
 
 		select {
@@ -662,28 +692,29 @@ func (t *http2Client) Write(s *Stream, data []byte, opts *Options) error {
 		// by http2Client.Close(). No explicit CloseStream() needs to be
 		// invoked.
         if s.StatusCode() != 0 {
-            fmt.Println("vendor/google/grpc/transport/http2_client.go  Write() select StatusCode : ", s.StatusCode())
-            fmt.Println("vendor/google/grpc/transport/http2_client.go  Write() select StatusDesc : ", s.StatusDesc())
+            //fmt.Println("vendor/google/grpc/transport/http2_client.go  Write() select StatusCode : ", s.StatusCode())
+            //fmt.Println("vendor/google/grpc/transport/http2_client.go  Write() select StatusDesc : ", s.StatusDesc())
         }
         if s.Method() == "/types.API/AddProcess" {
-            fmt.Println("vendor/google/grpc/transport/http2_client.go  before writeD() sleep 3 seconds")
-            time.Sleep(time.Second * 3)
+            fmt.Println("vendor/google/grpc/transport/http2_client.go  before writeD()")
+            //time.Sleep(time.Second * 3)
             fmt.Println("vendor/google/grpc/transport/http2_client.go  before writeD StatusCode : ", s.StatusCode())
             fmt.Println("vendor/google/grpc/transport/http2_client.go  before writeD StatusDesc : ", s.StatusDesc())
         }
 
+        //fmt.Println("vendor/google/grpc/transport/http2_client.go  Write() before writeData ")
 		if err := t.framer.writeData(forceFlush, s.id, endStream, p); err != nil {
 			t.notifyError(err)
-            fmt.Println("vendor/google/grpc/transport/http2_client.go   writeD is err!!!")
+           // fmt.Println("vendor/google/grpc/transport/http2_client.go   writeData is err!!!")
 			return connectionErrorf(true, err, "transport: %v", err)
 		}
         if s.Method() == "/types.API/AddProcess" {
-            fmt.Println("vendor/google/grpc/transport/http2_client.go   after writeD() ")
-            fmt.Println("vendor/google/grpc/transport/http2_client.go writeD() sleep 3 seconds")
+            fmt.Println("vendor/google/grpc/transport/http2_client.go   after writeData() ")
+            //fmt.Println("vendor/google/grpc/transport/http2_client.go writeD() sleep 3 seconds")
             //time.Sleep(time.Second * 3)
-            //fmt.Println("vendor/google/grpc/transport/http2_client.go  Write() writeD stream : ", s.id)
-            //fmt.Println("vendor/google/grpc/transport/http2_client.go  Write() writeD StatusCode : ", s.StatusCode())
-            //fmt.Println("vendor/google/grpc/transport/http2_client.go  Write() writeD StatusDesc : ", s.StatusDesc())
+            fmt.Println("vendor/google/grpc/transport/http2_client.go  Write() writeD stream : ", s.id)
+            fmt.Println("vendor/google/grpc/transport/http2_client.go  Write() writeD StatusCode : ", s.StatusCode())
+            fmt.Println("vendor/google/grpc/transport/http2_client.go  Write() writeD StatusDesc : ", s.StatusDesc())
         }
 
 		if t.framer.adjustNumWriters(-1) == 0 {
@@ -705,8 +736,9 @@ func (t *http2Client) Write(s *Stream, data []byte, opts *Options) error {
 
     if s.Method() == "/types.API/AddProcess" {
     
-      fmt.Println("vendor/google/grpc/transport/http2_client.go end sleep 2 seconds")
-      time.Sleep(time.Second * 2)
+      fmt.Println("vendor/google/grpc/transport/http2_client.go end")
+      //fmt.Println("vendor/google/grpc/transport/http2_client.go end sleep 2 seconds")
+      //time.Sleep(time.Second * 2)
       fmt.Println("vendor/google/grpc/transport/http2_client.go  end StatusCode : ", s.StatusCode())
       fmt.Println("vendor/google/grpc/transport/http2_client.go  end StatusDesc : ", s.StatusDesc())
     }
@@ -739,6 +771,7 @@ func (t *http2Client) updateWindow(s *Stream, n uint32) {
 }
 
 func (t *http2Client) handleData(f *http2.DataFrame) {
+    //fmt.Println("vendor/google.golang.org/grpc/transport/http2_client.go  handleData()")
 	size := len(f.Data())
 	if err := t.fc.onData(uint32(size)); err != nil {
 		t.notifyError(connectionErrorf(true, err, "%v", err))
@@ -766,6 +799,7 @@ func (t *http2Client) handleData(f *http2.DataFrame) {
 			s.state = streamDone
 			s.statusCode = codes.Internal
 			s.statusDesc = err.Error()
+            //fmt.Println("vendor/google.golang.org/grpc/transport/http2_client.go  handleData() sfconData s.statusCode : ", s.statusCode)
 			close(s.done)
 			s.mu.Unlock()
 			s.write(recvMsg{err: io.EOF})
@@ -791,6 +825,7 @@ func (t *http2Client) handleData(f *http2.DataFrame) {
 		s.state = streamDone
 		s.statusCode = codes.Internal
 		s.statusDesc = "server closed the stream without sending trailers"
+        //fmt.Println("vendor/google.golang.org/grpc/transport/http2_client.go  handleData() frameheader s.statusCode : ", s.statusCode)
 		close(s.done)
 		s.mu.Unlock()
 		s.write(recvMsg{err: io.EOF})
@@ -813,11 +848,13 @@ func (t *http2Client) handleRSTStream(f *http2.RSTStreamFrame) {
 		s.headerDone = true
 	}
 	s.statusCode, ok = http2ErrConvTab[http2.ErrCode(f.ErrCode)]
+    //fmt.Println("vendor/google.golang.org/grpc/transport/http2_client.go  HandleRSTStream  OK : ", ok)
 	if !ok {
 		grpclog.Println("transport: http2Client.handleRSTStream found no mapped gRPC status for the received http2 error ", f.ErrCode)
 		s.statusCode = codes.Unknown
+        //fmt.Println("vendor/google.golang.org/grpc/transport/http2_client.go  HandleRSTStream  Unknown")
 	}
-	s.statusDesc = fmt.Sprintf("stream terminated by RST_STREAM with error code: %d", f.ErrCode)
+	s.statusDesc = fmt.Sprintf("ssssssssssssssssssssssssssssssstream terminated by RST_STREAM with error code: %d", f.ErrCode)
 	close(s.done)
 	s.mu.Unlock()
 	s.write(recvMsg{err: io.EOF})
@@ -891,6 +928,23 @@ func (t *http2Client) operateHeaders(frame *http2.MetaHeadersFrame) {
 	}
 	var state decodeState
 	for _, hf := range frame.Fields {
+        code, err := strconv.Atoi(hf.Value)
+        if err != nil {
+           //fmt.Println("vendor/google.golang.org/grpc/transport/http2_client.go  operateHeaders() strconv is err!!!")
+        }
+        //var d *decodeState
+        //d.statusCode = codes.Code(code)
+        tmpStatusCode := codes.Code(code)
+        if tmpStatusCode != 0 {
+           //fmt.Println("vendor/google.golang.org/grpc/transport/http2_client.go  operateHeaders() Name : ", hf.Name)
+           //fmt.Println("vendor/google.golang.org/grpc/transport/http2_client.go  operateHeaders() StatusCode : ", tmpStatusCode)
+           //fmt.Println("vendor/google.golang.org/grpc/transport/http2_client.go  operateHeaders() stream.id : ", s.id)
+        }else {
+           //fmt.Println("vendor/google.golang.org/grpc/transport/http2_client.go  operateHeaders() Name : ", hf.Name)
+           //fmt.Println("vendor/google.golang.org/grpc/transport/http2_client.go  operateHeaders() StatusCode : ", tmpStatusCode)
+           //fmt.Println("vendor/google.golang.org/grpc/transport/http2_client.go  operateHeaders() stream.id : ", s.id)
+        }
+
 		state.processHeaderField(hf)
 	}
 	if state.err != nil {
@@ -928,6 +982,9 @@ func (t *http2Client) operateHeaders(frame *http2.MetaHeadersFrame) {
 	}
 	s.statusCode = state.statusCode
 	s.statusDesc = state.statusDesc
+    if s.statusCode != 0 {
+       //fmt.Println("vendor/google.golang.org/grpc/transport/http2_client.go  operateHeaders()  s.statusCode : ", s.statusCode)
+    }
 	close(s.done)
 	s.state = streamDone
 	s.mu.Unlock()
@@ -952,21 +1009,51 @@ func handleMalformedHTTP2(s *Stream, err error) {
 // TODO(zhaoq): Check the validity of the incoming frame sequence.
 func (t *http2Client) reader() {
 	// Check the validity of server preface.
+    //fmt.Println("vendor/google.golang.org/grpc/transport/http2_client.go  reader()")
+    //fmt.Println("vendor/google.golang.org/grpc/transport/http2_client.go  reader() before readFrame")
 	frame, err := t.framer.readFrame()
 	if err != nil {
 		t.notifyError(err)
 		return
 	}
+    switch frame1 := frame.(type) {
+    case *http2.MetaHeadersFrame:
+     for _, tmpHF1 := range frame1.Fields {
+        code1, _ := strconv.Atoi(tmpHF1.Value)
+        tmpStatusCode1 := codes.Code(code1)
+        if tmpHF1.Name == "grpc-status" && tmpStatusCode1 != 0 {
+           fmt.Println("vendor/google.golang.org/grpc/transport/http2_client.go  reader() 1")
+        }
+     }
+     default:
+           //fmt.Println("vendor/google.golang.org/grpc/transport/http2_client.go  reader() 1 *http2.MetaHeadersFrame")
+    }
+
 	sf, ok := frame.(*http2.SettingsFrame)
 	if !ok {
 		t.notifyError(err)
 		return
 	}
 	t.handleSettings(sf)
+    switch  frame2 := frame.(type){
+	case *http2.MetaHeadersFrame:
+    for _, tmpHF2 := range frame2.Fields {
+        code2, _ := strconv.Atoi(tmpHF2.Value)
+        tmpStatusCode2 := codes.Code(code2)
+        if tmpHF2.Name == "grpc-status" && tmpStatusCode2 != 0 {
+           fmt.Println("vendor/google.golang.org/grpc/transport/http2_client.go  reader() 2")
+        }else if tmpHF2.Name == "grpc-status" && tmpStatusCode2 == 0 {
+           fmt.Println("vendor/google.golang.org/grpc/transport/http2_client.go  reader() 2 OK")
+        }
+    }
+    default:
+   }
 
 	// loop to keep reading incoming messages on this transport.
 	for {
+        //fmt.Println("vendor/google.golang.org/grpc/transport/http2_client.go  reader() before readerFrame")
 		frame, err := t.framer.readFrame()
+        //fmt.Println("vendor/google.golang.org/grpc/transport/http2_client.go  reader() after readerFrame")
 		if err != nil {
 			// Abort an active stream if the http2.Framer returns a
 			// http2.StreamError. This can happen only if the server's response
@@ -988,23 +1075,43 @@ func (t *http2Client) reader() {
 		}
 		switch frame := frame.(type) {
 		case *http2.MetaHeadersFrame:
+            for _, tmpHF := range frame.Fields {
+               code, _ := strconv.Atoi(tmpHF.Value)
+               tmpStatusCode := codes.Code(code)
+               if tmpHF.Name == "grpc-status" && tmpStatusCode != 0 {
+               //fmt.Println("vendor/google.golang.org/grpc/transport/http2_client.go  reader() http2metaheadersframe")
+               //fmt.Println("vendor/google.golang.org/grpc/transport/http2_client.go  reader() sleep 10 seconds")
+               //time.Sleep(time.Second * 10)
+               }
+            }
+            //fmt.Println("vendor/google.golang.org/grpc/transport/http2_client.go  reader() metaheader")
 			t.operateHeaders(frame)
 		case *http2.DataFrame:
+            //fmt.Println("vendor/google.golang.org/grpc/transport/http2_client.go  reader() dataframe")
 			t.handleData(frame)
 		case *http2.RSTStreamFrame:
+            //fmt.Println("vendor/google.golang.org/grpc/transport/http2_client.go  reader() streamframe")
+            //fmt.Println("vendor/google.golang.org/grpc/transport/http2_client.go  reader() streamframe frame : ", frame)
 			t.handleRSTStream(frame)
 		case *http2.SettingsFrame:
+            //fmt.Println("vendor/google.golang.org/grpc/transport/http2_client.go  reader() settingsframe")
 			t.handleSettings(frame)
 		case *http2.PingFrame:
+            //fmt.Println("vendor/google.golang.org/grpc/transport/http2_client.go  reader() pingframe")
 			t.handlePing(frame)
 		case *http2.GoAwayFrame:
+            //fmt.Println("vendor/google.golang.org/grpc/transport/http2_client.go  reader() goaway")
 			t.handleGoAway(frame)
 		case *http2.WindowUpdateFrame:
+            //fmt.Println("vendor/google.golang.org/grpc/transport/http2_client.go  reader() windowupdate")
 			t.handleWindowUpdate(frame)
 		default:
 			grpclog.Printf("transport: http2Client.reader got unhandled frame type %v.", frame)
+			//fmt.Println("vendor/google.golang.org/grpc/transport/http2_client.go  reader()  transport: http2Client.reader got unhandled frame type : ", frame)
 		}
+        //fmt.Println("vendor/google.golang.org/grpc/transport/http2_client.go  reader() end switch")
 	}
+        //fmt.Println("vendor/google.golang.org/grpc/transport/http2_client.go  reader() end ")
 }
 
 func (t *http2Client) applySettings(ss []http2.Setting) {
@@ -1101,4 +1208,18 @@ func (t *http2Client) notifyError(err error) {
 		grpclog.Printf("transport: http2Client.notifyError got notified that the client transport was broken %v.", err)
 	}
 	t.mu.Unlock()
+}
+
+
+
+
+func logPrint(errStr string) {
+    logFile, logError := os.Open("/home/vagrant/log.md")
+    if logError != nil {
+        logFile, _ = os.Create("/home/vagrant/log.md")
+    }
+    defer logFile.Close()
+
+    debugLog := log.New(logFile, "[Debug]", log.Llongfile)
+    debugLog.Println(errStr)
 }

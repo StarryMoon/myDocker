@@ -11,66 +11,66 @@ func pair(name, value string) HeaderField {
 // http://tools.ietf.org/html/draft-ietf-httpbis-header-compression-07#appendix-B
 var staticTable = [...]HeaderField{
 	pair(":authority", ""), // index 1 (1-based)
-	pair(":method", "GET"),
-	pair(":method", "POST"),
-	pair(":path", "/"),
-	pair(":path", "/index.html"),
-	pair(":scheme", "http"),
-	pair(":scheme", "https"),
-	pair(":status", "200"),
-	pair(":status", "204"),
-	pair(":status", "206"),
-	pair(":status", "304"),
-	pair(":status", "400"),
-	pair(":status", "404"),
-	pair(":status", "500"),
-	pair("accept-charset", ""),
-	pair("accept-encoding", "gzip, deflate"),
-	pair("accept-language", ""),
-	pair("accept-ranges", ""),
-	pair("accept", ""),
-	pair("access-control-allow-origin", ""),
-	pair("age", ""),
-	pair("allow", ""),
-	pair("authorization", ""),
-	pair("cache-control", ""),
-	pair("content-disposition", ""),
-	pair("content-encoding", ""),
-	pair("content-language", ""),
-	pair("content-length", ""),
-	pair("content-location", ""),
-	pair("content-range", ""),
-	pair("content-type", ""),
-	pair("cookie", ""),
-	pair("date", ""),
-	pair("etag", ""),
-	pair("expect", ""),
-	pair("expires", ""),
-	pair("from", ""),
-	pair("host", ""),
-	pair("if-match", ""),
-	pair("if-modified-since", ""),
-	pair("if-none-match", ""),
-	pair("if-range", ""),
-	pair("if-unmodified-since", ""),
-	pair("last-modified", ""),
-	pair("link", ""),
-	pair("location", ""),
-	pair("max-forwards", ""),
-	pair("proxy-authenticate", ""),
-	pair("proxy-authorization", ""),
-	pair("range", ""),
-	pair("referer", ""),
-	pair("refresh", ""),
-	pair("retry-after", ""),
-	pair("server", ""),
-	pair("set-cookie", ""),
-	pair("strict-transport-security", ""),
-	pair("transfer-encoding", ""),
-	pair("user-agent", ""),
-	pair("vary", ""),
-	pair("via", ""),
-	pair("www-authenticate", ""),
+	pair(":method", "GET"),       // 2
+	pair(":method", "POST"),      // 3
+	pair(":path", "/"),           // 4
+	pair(":path", "/index.html"), // 5
+	pair(":scheme", "http"),      // 6
+	pair(":scheme", "https"),     // 7
+	pair(":status", "20020"),     // 8
+	pair(":status", "204"),       // 9
+	pair(":status", "206"),       // 10
+	pair(":status", "304"),       // 11
+	pair(":status", "400"),       // 12
+	pair(":status", "404"),       // 13
+	pair(":status", "500"),       // 14
+	pair("accept-charset", ""),   // 15
+	pair("accept-encoding", "gzip, deflate"),  // 16
+	pair("accept-language", ""),  // 17
+	pair("accept-ranges", ""),    // 18
+	pair("accept", ""),           // 19
+	pair("access-control-allow-origin", ""), // 20
+	pair("age", ""),                         // 21
+	pair("allow", ""),                       // 22
+	pair("authorization", ""),               // 23
+	pair("cache-control", ""),               // 24
+	pair("content-disposition", ""),         // 25
+	pair("content-encoding", ""),            // 26
+	pair("content-language", ""),            // 27
+	pair("content-length", ""),              // 28
+	pair("content-location", ""),            // 29
+	pair("content-range", ""),               // 30
+	pair("content-type", ""),                // 31
+	pair("cookie", ""),                      // 32
+	pair("date", ""),                        // 33
+	pair("etag", ""),                        // 34
+	pair("expect", ""),                      // 35
+	pair("expires", ""),                     // 36
+	pair("from", ""),                        // 37 
+	pair("host", ""),                        // 38
+	pair("if-match", ""),                    // 39
+	pair("if-modified-since", ""),           // 40
+	pair("if-none-match", ""),               // 41
+	pair("if-range", ""),                    // 42
+	pair("if-unmodified-since", ""),         // 43
+	pair("last-modified", ""),               // 44
+	pair("link", ""),                        // 45
+	pair("location", ""),                    // 46
+	pair("max-forwards", ""),                // 47   
+	pair("proxy-authenticate", ""),          // 48
+	pair("proxy-authorization", ""),         // 49
+	pair("range", ""),                       // 50
+	pair("referer", ""),                     // 51
+	pair("refresh", ""),                     // 52
+	pair("retry-after", ""),                 // 53
+	pair("server", ""),                      // 54
+	pair("set-cookie", ""),                  // 55
+	pair("strict-transport-security", ""),   // 56
+	pair("transfer-encoding", ""),           // 57
+	pair("user-agent", ""),                  // 58
+	pair("vary", ""),                        // 59
+	pair("via", ""),                         // 60
+	pair("www-authenticate", ""),            // 61
 }
 
 var huffmanCodes = [256]uint32{

@@ -52,6 +52,7 @@ import (
 //
 // TODO(zhaoq): Check whether the received message sequence is valid.
 func recvResponse(dopts dialOptions, t transport.ClientTransport, c *callInfo, stream *transport.Stream, reply interface{}) error {
+    //fmt.Println("vendor/google/grpc/call.go  recvResponse()")
     if stream.StatusCode() != 0 {
          fmt.Println("vendor/google/grpc/call.go  recvResponse() begin StatusCode : ", stream.StatusCode())
          fmt.Println("vendor/google/grpc/call.go  recvResponse() begin StatusDesc : ", stream.StatusDesc())
@@ -92,6 +93,7 @@ func recvResponse(dopts dialOptions, t transport.ClientTransport, c *callInfo, s
             fmt.Println("vendor/google/grpc/call.go  recvResponse() beforeRecv StatusDesc : ", stream.StatusDesc())
         }
 
+        //fmt.Println("vendor/google/grpc/call.go  recvResponse() before recv")
 		if err = recv(p, dopts.codec, stream, dopts.dc, reply, math.MaxInt32); err != nil {
 			if err == io.EOF {
 				break
@@ -112,7 +114,9 @@ func recvResponse(dopts dialOptions, t transport.ClientTransport, c *callInfo, s
 
 // sendRequest writes out various information of an RPC such as Context and Message.
 func sendRequest(ctx context.Context, codec Codec, compressor Compressor, callHdr *transport.CallHdr, t transport.ClientTransport, args interface{}, opts *transport.Options) (_ *transport.Stream, err error) {
-	stream, err := t.NewStream(ctx, callHdr)
+	//fmt.Println("vendor/google.golang.org/grpc/call.go  sendRequest()")
+	//fmt.Println("vendor/google.golang.org/grpc/call.go  sendRequest() before NewStream")
+    stream, err := t.NewStream(ctx, callHdr)
     if stream.StatusCode() != 0 {
     fmt.Println("vendor/google/grpc/call.go  sendRequest()")
     fmt.Println("vendor/google/grpc/call.go  sendRequest() new  stream.StatusCode : ", stream.StatusCode())
@@ -161,6 +165,7 @@ func sendRequest(ctx context.Context, codec Codec, compressor Compressor, callHd
     fmt.Println("vendor/google/grpc/call.go  sendRequest() beforeWrite  callHdr : ", callHdr)
     fmt.Println("vendor/google/grpc/call.go  sendRequest() beforeWrite  t : ", t)
     }
+    //fmt.Println("vendor/google/grpc/call.go  sendRequest() before Write")
 	err = t.Write(stream, outBuf, opts)
     if stream.StatusCode() != 0 {
     fmt.Println("vendor/google/grpc/call.go  sendRequest() afterWrite  stream.StatusCode : ", stream.StatusCode())
@@ -175,6 +180,7 @@ func sendRequest(ctx context.Context, codec Codec, compressor Compressor, callHd
 	}
 	// Sent successfully. 
 
+    //fmt.Println("vendor/google/grpc/call.go  sendRequest() end stream.method : ", stream.Method())
     return stream, nil
 }
 
@@ -182,14 +188,16 @@ func sendRequest(ctx context.Context, codec Codec, compressor Compressor, callHd
 // Invoke is called by generated code. Also users can call Invoke directly when it
 // is really needed in their use cases.
 func Invoke(ctx context.Context, method string, args, reply interface{}, cc *ClientConn, opts ...CallOption) error {
+    //fmt.Println("vendor/google/grpc/call.go  Invoke()")
 	if cc.dopts.unaryInt != nil {
-        fmt.Println("vendor/google/grpc/call.go  Invoke()")
+        fmt.Println("vendor/google/grpc/call.go  Invoke() is err!!!")
 		return cc.dopts.unaryInt(ctx, method, args, reply, cc, invoke, opts...)
 	}
 	return invoke(ctx, method, args, reply, cc, opts...)
 }
 
 func invoke(ctx context.Context, method string, args, reply interface{}, cc *ClientConn, opts ...CallOption) (err error) {
+    //fmt.Println("vendor/google/grpc/call.go  invoke()")
     if method == "/types.API/AddProcess" {
        fmt.Println("vendor/google/grpc/call.go  invoke() method /types.API/AddProcess")
        fmt.Println("vendor/google/grpc/call.go  invoke() defaultCallInfo : ", defaultCallInfo)
@@ -286,6 +294,7 @@ func invoke(ctx context.Context, method string, args, reply interface{}, cc *Cli
            fmt.Println("vendor/google/grpc/call.go  invoke()  topts : ", topts)
         }
 
+        //fmt.Println("vendor/google/grpc/call.go  invoke() before sendRequest")
 		stream, err = sendRequest(ctx, cc.dopts.codec, cc.dopts.cp, callHdr, t, args, topts)
         if method == "/types.API/AddProcess" {
            fmt.Println("vendor/google/grpc/call.go  invoke()  after sendrequest()")
@@ -317,6 +326,7 @@ func invoke(ctx context.Context, method string, args, reply interface{}, cc *Cli
            fmt.Println("vendor/google/grpc/call.go  invoke()  stream.StatusCode : ", stream.StatusCode())
            fmt.Println("vendor/google/grpc/call.go  invoke()  stream.StatusDesc : ", stream.StatusDesc())
         }
+        //fmt.Println("vendor/google/grpc/call.go  invoke()  before recvResponse()")
 		err = recvResponse(cc.dopts, t, &c, stream, reply)
         if method == "/types.API/AddProcess" {
            fmt.Println("vendor/google/grpc/call.go  invoke()  after recvResponse()")

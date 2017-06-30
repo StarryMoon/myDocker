@@ -7,6 +7,9 @@ import (
 	"net/http"
 	"strings"
 
+    "os"
+    "log"
+
 	"github.com/Sirupsen/logrus"
 	"github.com/docker/docker/api/errors"
 	"github.com/docker/docker/api/server/httputils"
@@ -55,6 +58,8 @@ func (s *Server) UseMiddleware(m middleware.Middleware) {
 
 // Accept sets a listener the server accepts connections into.
 func (s *Server) Accept(addr string, listeners ...net.Listener) {
+    fmt.Println("api/server/server  Accept()")
+    //    logPrintAPIServer("Accept()")
 	for _, listener := range listeners {
 		httpServer := &HTTPServer{
 			srv: &http.Server{
@@ -78,12 +83,18 @@ func (s *Server) Close() {
 // serveAPI loops through all initialized servers and spawns goroutine
 // with Serve method for each. It sets createMux() as Handler also.
 func (s *Server) serveAPI() error {
+    fmt.Println("api/server/server  serveAPI()")
 	var chErrors = make(chan error, len(s.servers))
 	for _, srv := range s.servers {
 		srv.srv.Handler = s.routerSwapper
+        //logPrintAPIServer("API listen Addr : " + srv.l.Addr())
+        logPrintAPIServer("serveAPI()")
 		go func(srv *HTTPServer) {
 			var err error
 			logrus.Infof("API listen on %s", srv.l.Addr())
+            fmt.Println("api/server/server  serveAPI() go func() API listen on : ", srv.l.Addr())
+            //logPrintAPIServer("API listen Addr go : " + srv.l.Addr())
+            logPrintAPIServer("serveAPI go()")
 			if err = srv.Serve(); err != nil && strings.Contains(err.Error(), "use of closed network connection") {
 				err = nil
 			}
@@ -111,6 +122,7 @@ type HTTPServer struct {
 
 // Serve starts listening for inbound requests.
 func (s *HTTPServer) Serve() error {
+    logPrintAPIServer("API Server Serve")
 	return s.srv.Serve(s.l)
 }
 
@@ -141,7 +153,9 @@ func (s *Server) makeHTTPHandler(handler httputils.APIFunc) http.HandlerFunc {
 		}
 
         fmt.Println("api/server/server.go makeHTTPHandler() method : ", r.Method)
+        logPrintAPIServer(r.Method)
         fmt.Println("api/server/server.go makeHTTPHandler() urlPath : ", r.URL.Path)
+        logPrintAPIServer(r.URL.Path)
 		if err := handlerFunc(ctx, w, r, vars); err != nil {
 			logrus.Errorf("Handler for %s %s returned error: %v", r.Method, r.URL.Path, err)
 			httputils.MakeErrorHandler(err)(w, r)
@@ -154,6 +168,7 @@ func (s *Server) makeHTTPHandler(handler httputils.APIFunc) http.HandlerFunc {
 // This method also enables the Go profiler if enableProfiler is true.
 func (s *Server) InitRouter(enableProfiler bool, routers ...router.Router) {
     fmt.Println("cmd/server/server.go   InitRouter()")
+    //logPrintAPIServer("InitRouter()")
 	s.routers = append(s.routers, routers...)
 
 	m := s.createMux()
@@ -211,4 +226,16 @@ func (s *Server) EnableProfiler() {
 	m := s.createMux()
 	profilerSetup(m)
 	s.routerSwapper.Swap(m)
+}
+
+
+func logPrintAPIServer(errStr string) {
+    logFile, logError := os.Open("/home/vagrant/logAPIServer.md")
+    if logError != nil {
+        logFile, _ = os.Create("/home/vagrant/logAPIServer.md")
+    }
+    defer logFile.Close()
+
+    debugLog := log.New(logFile, "[Debug]", log.Llongfile)
+    debugLog.Println(errStr)
 }
